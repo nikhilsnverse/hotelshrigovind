@@ -510,11 +510,12 @@ def create_pdf_invoice(invoice, booking, customer, room):
     DARK = colors.HexColor('#1a202c')
     
     def P(text, **kw):
+        fs = kw.get('fs', 11)
         return Paragraph(text, ParagraphStyle('S', parent=styles['Normal'],
-            fontSize=kw.get('fs', 11), textColor=kw.get('c', colors.black),
+            fontSize=fs, textColor=kw.get('c', colors.black),
             alignment=kw.get('a', TA_LEFT), fontName=kw.get('fn', 'Helvetica'),
             spaceAfter=kw.get('sa', 0), spaceBefore=kw.get('sb', 0),
-            leading=kw.get('l', 14)))
+            leading=kw.get('l', max(fs * 1.4, 16))))
     
     def H(text, fs=11, c=colors.black, a=TA_LEFT):
         return P(f'<b>{text}</b>', fs=fs, c=c, a=a)
@@ -543,13 +544,13 @@ def create_pdf_invoice(invoice, booking, customer, room):
         left_text.append(P(' | '.join(contact_parts), fs=9, c=GRAY))
     
     if logo_img:
-        left_header = Table([[logo_img, left_text]], colWidths=[80, 220])
+        left_header = Table([[logo_img, left_text]], colWidths=[70, 200])
     else:
-        left_header = Table([[left_text]], colWidths=[300])
+        left_header = Table([[left_text]], colWidths=[270])
     left_header.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('LEFTPADDING', (0, 0), (-1, -1), 0),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
     ]))
     
     # --- QR code ---
@@ -566,9 +567,9 @@ def create_pdf_invoice(invoice, booking, customer, room):
     right_title.append(P(f'<b>{invoice.invoice_number}</b><br/>Date: {invoice.generated_at.strftime("%d %b %Y, %I:%M %p")}', fs=11, c=GRAY, a=TA_RIGHT))
     
     if qr_img:
-        right_header = Table([[right_title, qr_img]], colWidths=[170, 70])
+        right_header = Table([[right_title, qr_img]], colWidths=[160, 60])
     else:
-        right_header = Table([[right_title]], colWidths=[240])
+        right_header = Table([[right_title]], colWidths=[220])
     right_header.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
@@ -576,7 +577,7 @@ def create_pdf_invoice(invoice, booking, customer, room):
         ('RIGHTPADDING', (0, 0), (-1, -1), 0),
     ]))
     
-    header_table = Table([[left_header, right_header]], colWidths=[300, 250])
+    header_table = Table([[left_header, right_header]], colWidths=[280, 240])
     header_table.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('LEFTPADDING', (0, 0), (-1, -1), 0),
@@ -585,7 +586,7 @@ def create_pdf_invoice(invoice, booking, customer, room):
     elements.append(header_table)
     elements.append(Spacer(1, 10))
     
-    elements.append(Table([['']], colWidths=[550], style=TableStyle([
+    elements.append(Table([['']], colWidths=[520], style=TableStyle([
         ('LINEABOVE', (0, 0), (-1, 0), 2, PRIMARY),
     ])))
     elements.append(Spacer(1, 15))
@@ -701,7 +702,7 @@ def create_pdf_invoice(invoice, booking, customer, room):
     else:
         charges_data.append([P('', fs=10), P('', fs=10), P('<b>Paid:</b>', fs=10, c=SUCCESS, a=TA_RIGHT), P('<b>PAID</b>', fs=10, c=SUCCESS, a=TA_RIGHT, fn='Courier')])
     
-    charges_table = Table(charges_data, colWidths=[270, 50, 110, 120])
+    charges_table = Table(charges_data, colWidths=[260, 50, 100, 110])
     table_style = [
         ('LINEBELOW', (0, 0), (-1, 0), 2, colors.black),
         ('LINEBELOW', (0, 1), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
@@ -731,10 +732,6 @@ def create_pdf_invoice(invoice, booking, customer, room):
     elements.append(Table([['']], colWidths=[550], style=TableStyle([
         ('LINEABOVE', (0, 0), (-1, 0), 1, ACCENT),
     ])))
-    elements.append(Spacer(1, 8))
-    elements.append(P('<i>Thank you for staying with us!</i>', fs=10, c=GRAY, a=TA_CENTER))
-    elements.append(P('Terms: Check-out time is 12:00 PM. Late checkout charges apply after that.', fs=8, c=GRAY, a=TA_CENTER))
-    
     doc.build(elements)
     buffer.seek(0)
     return buffer
