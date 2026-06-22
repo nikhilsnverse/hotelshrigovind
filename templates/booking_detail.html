@@ -220,7 +220,7 @@
                         <td style="padding: 8px 0; font-weight: 600;">Subtotal (before GST)</td>
                         <td style="text-align: right; font-weight: 600;" class="text-mono">Rs. {{ "%.2f"|format(booking.subtotal) }}</td>
                     </tr>
-                    {% if booking.gst_amount and booking.gst_amount > 0 %}
+                    {% if booking.gst_amount and booking.gst_amount > 0 and booking.gst_mode != 'no_gst' %}
                     <tr><td colspan="2" style="padding: 6px 0 2px 0; font-size: 11px; color: var(--gray-500);"><strong>Tax Breakdown</strong></td></tr>
                     <tr style="font-size: 12px;">
                         <td style="padding: 4px 0 4px 10px;">CGST @{{ "%.1f"|format(booking.gst_rate|float / 2) }}%</td>

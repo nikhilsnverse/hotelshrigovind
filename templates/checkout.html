@@ -173,8 +173,14 @@
         <div class="card" style="position: sticky; top: 90px;">
             <div class="card-header">
                 <h3 class="card-title">Final Bill</h3>
-                <span class="badge {% if booking.gst_mode == 'include' %}badge-success{% else %}badge-warning{% endif %}">
-                    {{ 'GST Included' if booking.gst_mode == 'include' else 'GST Excluded' }}
+                <span class="badge {% if booking.gst_mode == 'include' %}badge-success{% elif booking.gst_mode == 'no_gst' %}badge-secondary{% else %}badge-warning{% endif %}">
+                    {% if booking.gst_mode == 'include' %}
+                        GST Included
+                    {% elif booking.gst_mode == 'no_gst' %}
+                        No GST
+                    {% else %}
+                        GST Excluded
+                    {% endif %}
                 </span>
             </div>
             <div class="card-body">

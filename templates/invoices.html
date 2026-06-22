@@ -34,7 +34,9 @@
                         <td>{{ invoice.booking.customer.name }}</td>
                         <td class="text-mono">
                             Rs. {{ invoice.booking.total_amount|int }}
+                            {% if invoice.booking.gst_amount and invoice.booking.gst_amount > 0 and invoice.booking.gst_mode != 'no_gst' %}
                             <br><small style="color: var(--gray-500); font-size: 10px;">GST: {{ (invoice.booking.gst_amount|float / 2)|int }} + {{ (invoice.booking.gst_amount|float / 2)|int }}</small>
+                            {% endif %}
                         </td>
                         <td>{{ invoice.generated_at.strftime('%d %b %Y, %I:%M %p') }}</td>
                         <td>

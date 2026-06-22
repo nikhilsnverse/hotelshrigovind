@@ -408,14 +408,28 @@ def calculate_bill(booking):
         gst_rate = Decimal(str(booking.gst_rate or 5))
         gst_amount = Decimal('0')
         base_price = Decimal('0')
-        
+
         if subtotal > 0:
             if booking.gst_mode == 'exclude':
+                # GST added on top of subtotal
                 gst_amount = (subtotal * gst_rate) / 100
                 total = subtotal + gst_amount
                 base_price = subtotal
                 display_subtotal = subtotal
+            elif booking.gst_mode == 'include':
+                # GST included in subtotal (derive base price)
+                base_price = (subtotal * 100) / (100 + gst_rate)
+                gst_amount = subtotal - base_price
+                total = subtotal
+                display_subtotal = subtotal
+            elif booking.gst_mode == 'no_gst':
+                # No GST should be applied
+                gst_amount = Decimal('0')
+                total = subtotal
+                base_price = subtotal
+                display_subtotal = subtotal
             else:
+                # Fallback to include behaviour
                 base_price = (subtotal * 100) / (100 + gst_rate)
                 gst_amount = subtotal - base_price
                 total = subtotal
@@ -1337,14 +1351,20 @@ def new_booking():
         total_room_charge = base_room_charge + Decimal(str(extra_person_charge))
         
         gst_rate_decimal = Decimal(str(gst_rate))
+        booking.subtotal = total_room_charge
         if gst_mode == 'exclude':
             subtotal = total_room_charge
-            booking.subtotal = subtotal
             booking.gst_amount = (subtotal * gst_rate_decimal) / 100
             booking.total_amount = subtotal + booking.gst_amount
+        elif gst_mode == 'include':
+            base_price = (total_room_charge * 100) / (100 + gst_rate_decimal)
+            booking.gst_amount = total_room_charge - base_price
+            booking.total_amount = total_room_charge
+        elif gst_mode == 'no_gst':
+            booking.gst_amount = Decimal('0')
+            booking.total_amount = total_room_charge
         else:
             base_price = (total_room_charge * 100) / (100 + gst_rate_decimal)
-            booking.subtotal = total_room_charge
             booking.gst_amount = total_room_charge - base_price
             booking.total_amount = total_room_charge
         
@@ -1677,6 +1697,13 @@ def edit_booking(booking_id):
             if booking.gst_mode == 'exclude':
                 booking.gst_amount = (subtotal * Decimal(str(gst_rate))) / 100
                 booking.total_amount = subtotal + booking.gst_amount
+            elif booking.gst_mode == 'include':
+                base_price = (subtotal * 100) / (100 + Decimal(str(gst_rate)))
+                booking.gst_amount = subtotal - base_price
+                booking.total_amount = subtotal
+            elif booking.gst_mode == 'no_gst':
+                booking.gst_amount = Decimal('0')
+                booking.total_amount = subtotal
             else:
                 base_price = (subtotal * 100) / (100 + Decimal(str(gst_rate)))
                 booking.gst_amount = subtotal - base_price

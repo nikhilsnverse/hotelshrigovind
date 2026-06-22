@@ -293,7 +293,7 @@
                 <td><strong>Subtotal (before GST):</strong></td>
                 <td style="text-align: right;" class="text-mono"><strong>Rs. {{ "%.2f"|format(booking.subtotal) }}</strong></td>
             </tr>
-            {% if booking.gst_amount and booking.gst_amount > 0 %}
+            {% if booking.gst_amount and booking.gst_amount > 0 and booking.gst_mode != 'no_gst' %}
             <tr><td colspan="2" style="padding: 8px 0 3px 0; font-size: 11px; color: var(--gray-500);"><strong>Tax Breakdown</strong></td></tr>
             <tr style="font-size: 12px;">
                 <td style="padding-left: 10px;">CGST @{{ "%.1f"|format(booking.gst_rate|float / 2) }}%</td>
