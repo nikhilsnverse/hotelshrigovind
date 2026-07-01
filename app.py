@@ -677,17 +677,21 @@ def create_pdf_invoice(invoice, booking, customer, room):
         desc = f'Room Charge ({room.room_number if room else "N/A"})'
         amount = float(room_rate * booking.stay_duration)
 
-    if booking.gst_mode == 'include' and gst > 0:
-        taxable = (amount * 100) / (100 + gst)
-        total = amount
-    elif booking.gst_mode == 'exclude' and gst > 0:
-        taxable = amount
-        total = amount + (amount * gst / 100)
-    else:
-        taxable = amount
-        total = amount
+    discount_amt = float(booking.discount or 0)
+    amount_after_discount = amount - discount_amt
 
-    items_data.append([P(str(idx)), P(f'<b>{desc}</b>'), P(str(booking.stay_duration), a=TA_CENTER), P(f'Rs. {amount:,.2f}', a=TA_RIGHT), P('-', a=TA_RIGHT), P(f'Rs. {taxable:,.2f}', a=TA_RIGHT), P(f'Rs. {total:,.2f}', a=TA_RIGHT)])
+    if booking.gst_mode == 'include' and gst > 0:
+        taxable = (amount_after_discount * 100) / (100 + gst)
+        total = amount_after_discount
+    elif booking.gst_mode == 'exclude' and gst > 0:
+        taxable = amount_after_discount
+        total = amount_after_discount + (amount_after_discount * gst / 100)
+    else:
+        taxable = amount_after_discount
+        total = amount_after_discount
+
+    discount_str = f'- Rs. {discount_amt:,.2f}' if discount_amt > 0 else '-'
+    items_data.append([P(str(idx)), P(f'<b>{desc}</b>'), P(str(booking.stay_duration), a=TA_CENTER), P(f'Rs. {amount:,.2f}', a=TA_RIGHT), P(discount_str, a=TA_RIGHT), P(f'Rs. {taxable:,.2f}', a=TA_RIGHT), P(f'Rs. {total:,.2f}', a=TA_RIGHT)])
     idx += 1
 
     # Extra person charges
@@ -723,11 +727,6 @@ def create_pdf_invoice(invoice, booking, customer, room):
 
         items_data.append([P(str(idx)), P(desc), P(str(qty), a=TA_CENTER), P(f'Rs. {amount:,.2f}', a=TA_RIGHT), P('-', a=TA_RIGHT), P(f'Rs. {taxable:,.2f}', a=TA_RIGHT), P(f'Rs. {total:,.2f}', a=TA_RIGHT)])
         idx += 1
-
-    # Discount row
-    if float(booking.discount or 0) > 0:
-        disc = float(booking.discount)
-        items_data.append([P(str(idx)), P('<b>Discount</b>'), P('-', a=TA_CENTER), P('-', a=TA_RIGHT), P(f'- Rs. {disc:,.2f}', a=TA_RIGHT, c=colors.black), P('-', a=TA_RIGHT), P(f'- Rs. {disc:,.2f}', a=TA_RIGHT)])
 
     # Column widths scaled to match HTML invoice proportions and fit within page
     # S.No: 28, Description: 200, Nights: 45, Amount: 70, Discount: 70, Taxable: 70, Total: 80

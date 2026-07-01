@@ -157,50 +157,117 @@
                 <th style="text-align: right;"><strong>Amount</strong></th>
             </tr>
         </thead>
+        {% set gst = booking.gst_rate|float or 0.0 %}
+        {% set row_idx = 0 %}
         <tbody>
+        <tr>
+            <th style="width:36px;"><strong>S.No</strong></th>
+            <th><strong>Description</strong></th>
+            <th style="width:60px;" class="center"><strong>Nights</strong></th>
+            <th style="width:90px;" class="amount"><strong>Amount</strong></th>
+            <th style="width:100px;" class="amount"><strong>Discount</strong></th>
+            <th style="width:100px;" class="amount"><strong>Taxable</strong></th>
+            <th style="width:110px;" class="amount"><strong>Total</strong></th>
+        </tr>
         {% if booking.booking_category == 'wedding' %}
             {% set package_name = {'all_9_ac': 'All 9 AC Rooms', 'all_rooms': 'All Rooms'}.get(booking.wedding_package, 'Wedding Package') %}
             {% set package_rate = 15000 if booking.wedding_package == 'all_9_ac' else 17000 %}
+            {% set amount = (package_rate * booking.stay_duration)|float %}
+            {% set discount_amt = booking.discount|float %}
+            {% set amount_after_discount = amount - discount_amt %}
+            {% set row_idx = row_idx + 1 %}
+            {% if booking.gst_mode == 'include' %}
+                {% set taxable = (amount_after_discount * 100) / (100 + gst) %}
+                {% set total = amount_after_discount %}
+            {% elif booking.gst_mode == 'exclude' %}
+                {% set taxable = amount_after_discount %}
+                {% set total = amount_after_discount + (amount_after_discount * gst / 100) %}
+            {% else %}
+                {% set taxable = amount_after_discount %}
+                {% set total = amount_after_discount %}
+            {% endif %}
             <tr>
+                <td>{{ row_idx }}</td>
                 <td><strong>Wedding Package ({{ package_name }})</strong></td>
-                <td style="text-align: center;"><strong>{{ booking.stay_duration }}</strong></td>
-                <td style="text-align: right;" class="text-mono"><strong>Rs. {{ "%.2f"|format(package_rate) }}</strong></td>
-                <td style="text-align: right;" class="text-mono"><strong>Rs. {{ "%.2f"|format(package_rate * booking.stay_duration) }}</strong></td>
+                <td style="text-align: center;">{{ booking.stay_duration }}</td>
+                <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(amount) }}</td>
+                <td style="text-align: right;" class="text-mono">{% if discount_amt > 0 %}- Rs. {{ "%.2f"|format(discount_amt) }}{% else %}-{% endif %}</td>
+                <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(taxable) }}</td>
+                <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(total) }}</td>
             </tr>
         {% else %}
+            {% set amount = (room.price_per_night|float * booking.stay_duration)|float %}
+            {% set discount_amt = booking.discount|float %}
+            {% set amount_after_discount = amount - discount_amt %}
+            {% set row_idx = row_idx + 1 %}
+            {% if booking.gst_mode == 'include' %}
+                {% set taxable = (amount_after_discount * 100) / (100 + gst) %}
+                {% set total = amount_after_discount %}
+            {% elif booking.gst_mode == 'exclude' %}
+                {% set taxable = amount_after_discount %}
+                {% set total = amount_after_discount + (amount_after_discount * gst / 100) %}
+            {% else %}
+                {% set taxable = amount_after_discount %}
+                {% set total = amount_after_discount %}
+            {% endif %}
             <tr>
+                <td>{{ row_idx }}</td>
                 <td><strong>Room Charge</strong></td>
-                <td style="text-align: center;"><strong>{{ booking.stay_duration }}</strong></td>
-                <td style="text-align: right;" class="text-mono"><strong>Rs. {{ "%.2f"|format(room.price_per_night|float) }}</strong></td>
-                <td style="text-align: right;" class="text-mono"><strong>Rs. {{ "%.2f"|format(room.price_per_night|float * booking.stay_duration) }}</strong></td>
+                <td style="text-align: center;">{{ booking.stay_duration }}</td>
+                <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(amount) }}</td>
+                <td style="text-align: right;" class="text-mono">{% if discount_amt > 0 %}- Rs. {{ "%.2f"|format(discount_amt) }}{% else %}-{% endif %}</td>
+                <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(taxable) }}</td>
+                <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(total) }}</td>
             </tr>
         {% endif %}
-
         {% if booking.extra_person_charges and booking.extra_person_charges > 0 %}
+            {% set amount = booking.extra_person_charges|float %}
+            {% set row_idx = row_idx + 1 %}
+            {% if booking.gst_mode == 'include' %}
+                {% set taxable = (amount * 100) / (100 + gst) %}
+                {% set total = amount %}
+            {% elif booking.gst_mode == 'exclude' %}
+                {% set taxable = amount %}
+                {% set total = amount + (amount * gst / 100) %}
+            {% else %}
+                {% set taxable = amount %}
+                {% set total = amount %}
+            {% endif %}
             <tr>
+                <td>{{ row_idx }}</td>
                 <td><strong>Extra Person Charges</strong></td>
-                <td></td>
-                <td style="text-align: right;" class="text-mono"><strong>Rs. 500.00</strong></td>
-                <td style="text-align: right;" class="text-mono"><strong>Rs. {{ "%.2f"|format(booking.extra_person_charges) }}</strong></td>
+                <td style="text-align: center;">-</td>
+                <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(amount) }}</td>
+                <td style="text-align: right;" class="text-mono">-</td>
+                <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(taxable) }}</td>
+                <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(total) }}</td>
             </tr>
         {% endif %}
         {% for ec in booking.extra_charges_list %}
+            {% set amount = ec.amount|float %}
+            {% set qty = ec.quantity or 1 %}
+            {% set row_idx = row_idx + 1 %}
+            {% if booking.gst_mode == 'include' %}
+                {% set taxable = (amount * 100) / (100 + gst) %}
+                {% set total = amount %}
+            {% elif booking.gst_mode == 'exclude' %}
+                {% set taxable = amount %}
+                {% set total = amount + (amount * gst / 100) %}
+            {% else %}
+                {% set taxable = amount %}
+                {% set total = amount %}
+            {% endif %}
             <tr>
+                <td>{{ row_idx }}</td>
                 <td><strong>{{ ec.description if ec.description else ec.charge_type|replace('_', ' ')|title }}</strong></td>
-                <td style="text-align: center;"><strong>{{ ec.quantity }}</strong></td>
-                <td style="text-align: right;" class="text-mono"><strong>Rs. {{ "%.2f"|format(ec.amount / ec.quantity) }}</strong></td>
-                <td style="text-align: right;" class="text-mono"><strong>Rs. {{ "%.2f"|format(ec.amount) }}</strong></td>
+                <td style="text-align: center;">{{ qty }}</td>
+                <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(amount) }}</td>
+                <td style="text-align: right;" class="text-mono">-</td>
+                <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(taxable) }}</td>
+                <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(total) }}</td>
             </tr>
         {% endfor %}
-        {% if booking.discount and booking.discount > 0 %}
-            <tr>
-                <td><strong>Discount</strong></td>
-                <td></td>
-                <td></td>
-                <td style="text-align: right; color: #38a169;" class="text-mono">- Rs. {{ "%.2f"|format(booking.discount) }}</td>
-            </tr>
-        {% endif %}
-        </tbody>
+
     </table>
 
     <div class="invoice-totals">
@@ -210,9 +277,15 @@
             {% set cgst = (booking.gst_amount|float / 2)|round(2) %}
             {% set sgst = booking.gst_amount|float - cgst %}
             <tr>
-                <td><strong>Grand Total:</strong></td>
-                <td style="text-align: right;" class="text-mono"><strong>Rs. {{ "%.2f"|format(booking.total_amount) }}</strong></td>
+                <td><strong>Subtotal:</strong></td>
+                <td style="text-align: right;" class="text-mono"><strong>Rs. {{ "%.2f"|format(booking.total_amount + booking.discount|float) }}</strong></td>
             </tr>
+            {% if booking.discount and booking.discount > 0 %}
+            <tr>
+                <td style="color: #38a169;">Discount:</td>
+                <td style="text-align: right; color: #38a169;" class="text-mono">- Rs. {{ "%.2f"|format(booking.discount) }}</td>
+            </tr>
+            {% endif %}
             <tr><td colspan="2" style="padding: 10px 0 5px 0; font-size: 11px; color: #718096;"><strong>Included Tax Breakdown</strong></td></tr>
             <tr style="font-size: 12px;">
                 <td style="padding-left: 10px;">Taxable Amount</td>
@@ -235,8 +308,14 @@
             {% set sgst_e = booking.gst_amount|float - cgst_e if booking.gst_amount else 0 %}
             <tr>
                 <td><strong>Subtotal:</strong></td>
-                <td style="text-align: right;" class="text-mono"><strong>Rs. {{ "%.2f"|format(booking.subtotal) }}</strong></td>
+                <td style="text-align: right;" class="text-mono"><strong>Rs. {{ "%.2f"|format(booking.subtotal + booking.discount|float) }}</strong></td>
             </tr>
+            {% if booking.discount and booking.discount > 0 %}
+            <tr>
+                <td style="color: #38a169;">Discount:</td>
+                <td style="text-align: right; color: #38a169;" class="text-mono">- Rs. {{ "%.2f"|format(booking.discount) }}</td>
+            </tr>
+            {% endif %}
             {% if booking.gst_amount and booking.gst_amount > 0 and booking.gst_mode != 'no_gst' %}
             <tr><td colspan="2" style="padding: 8px 0 3px 0; font-size: 11px; color: #718096;"><strong>Tax Breakdown</strong></td></tr>
             <tr style="font-size: 12px;">
