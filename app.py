@@ -658,41 +658,89 @@ def create_pdf_invoice(invoice, booking, customer, room):
     
     gst_percent = float(booking.gst_rate or 5) / 2
     
-    # --- Table 1: Line items (matching HTML invoice-table) ---
+    # --- Table 1: Line items (S.No, Description, Nights, Amount, Discount, Taxable, Total) ---
+    gst = float(booking.gst_rate or 0)
+    items_data = [
+        [P('<b>S.No</b>', fs=9), P('<b>Description</b>', fs=9), P('<b>Nights</b>', fs=9, a=TA_CENTER),
+         P('<b>Amount</b>', fs=9, a=TA_RIGHT), P('<b>Discount</b>', fs=9, a=TA_RIGHT), P('<b>Taxable</b>', fs=9, a=TA_RIGHT), P('<b>Total</b>', fs=9, a=TA_RIGHT)]
+    ]
+
+    idx = 1
+    # Room / Wedding row
     if booking.booking_category == 'wedding':
         wedding_rates = {'all_9_ac': 15000, 'all_rooms': 17000}
         room_rate = wedding_rates.get(booking.wedding_package, 15000)
-        package_name = {'all_9_ac': 'All 9 AC Rooms', 'all_rooms': 'All Rooms'}.get(booking.wedding_package, 'Wedding Package')
-        room_charge_total = room_rate * booking.stay_duration
-        items_data = [
-            [P('<b>Description</b>', fs=10), P('<b>Qty</b>', fs=10, a=TA_CENTER), P('<b>Rate</b>', fs=10, a=TA_RIGHT), P('<b>Amount</b>', fs=10, a=TA_RIGHT)],
-            [P(f'<b>Wedding Package ({package_name})</b>', fs=10), P(f'<b>{booking.stay_duration}</b>', fs=10, a=TA_CENTER), P(f'<b>Rs. {room_rate:,.2f}</b>', fs=10, a=TA_RIGHT, fn='Courier'), P(f'<b>Rs. {room_charge_total:,.2f}</b>', fs=10, a=TA_RIGHT, fn='Courier')],
-        ]
+        desc = f'Wedding Package ({ {"all_9_ac": "All 9 AC Rooms", "all_rooms": "All Rooms"}.get(booking.wedding_package, "Wedding Package") })'
+        amount = float(room_rate * booking.stay_duration)
     else:
-        room_rate = float(room.price_per_night)
-        room_charge_total = room_rate * booking.stay_duration
-        items_data = [
-            [P('<b>Description</b>', fs=10), P('<b>Qty</b>', fs=10, a=TA_CENTER), P('<b>Rate</b>', fs=10, a=TA_RIGHT), P('<b>Amount</b>', fs=10, a=TA_RIGHT)],
-            [P('<b>Room Charge</b>', fs=10), P(f'<b>{booking.stay_duration}</b>', fs=10, a=TA_CENTER), P(f'<b>Rs. {room_rate:,.2f}</b>', fs=10, a=TA_RIGHT, fn='Courier'), P(f'<b>Rs. {room_charge_total:,.2f}</b>', fs=10, a=TA_RIGHT, fn='Courier')],
-        ]
-        if float(booking.extra_person_charges or 0) > 0:
-            items_data.append([P('<b>Extra Person Charges</b>', fs=10), P('', fs=10), P('<b>Rs. 500.00</b>', fs=10, a=TA_RIGHT, fn='Courier'), P(f'<b>Rs. {float(booking.extra_person_charges):,.2f}</b>', fs=10, a=TA_RIGHT, fn='Courier')])
-    
+        room_rate = float(room.price_per_night) if room else 0.0
+        desc = f'Room Charge ({room.room_number if room else "N/A"})'
+        amount = float(room_rate * booking.stay_duration)
+
+    if booking.gst_mode == 'include' and gst > 0:
+        taxable = (amount * 100) / (100 + gst)
+        total = amount
+    elif booking.gst_mode == 'exclude' and gst > 0:
+        taxable = amount
+        total = amount + (amount * gst / 100)
+    else:
+        taxable = amount
+        total = amount
+
+    items_data.append([P(str(idx)), P(f'<b>{desc}</b>'), P(str(booking.stay_duration), a=TA_CENTER), P(f'Rs. {amount:,.2f}', a=TA_RIGHT), P('-', a=TA_RIGHT), P(f'Rs. {taxable:,.2f}', a=TA_RIGHT), P(f'Rs. {total:,.2f}', a=TA_RIGHT)])
+    idx += 1
+
+    # Extra person charges
+    if float(booking.extra_person_charges or 0) > 0:
+        amount = float(booking.extra_person_charges)
+        if booking.gst_mode == 'include' and gst > 0:
+            taxable = (amount * 100) / (100 + gst)
+            total = amount
+        elif booking.gst_mode == 'exclude' and gst > 0:
+            taxable = amount
+            total = amount + (amount * gst / 100)
+        else:
+            taxable = amount
+            total = amount
+
+        items_data.append([P(str(idx)), P('<b>Extra Person Charges</b>'), P('-', a=TA_CENTER), P(f'Rs. {amount:,.2f}', a=TA_RIGHT), P('-', a=TA_RIGHT), P(f'Rs. {taxable:,.2f}', a=TA_RIGHT), P(f'Rs. {total:,.2f}', a=TA_RIGHT)])
+        idx += 1
+
+    # Other extra charges
     for ec in booking.extra_charges_list:
         desc = ec.description if ec.description else ec.charge_type.replace('_', ' ').title()
-        unit_rate = float(ec.amount/ec.quantity) if ec.quantity > 0 else float(ec.amount)
-        items_data.append([P(f'<b>{desc}</b>', fs=10), P(f'<b>{ec.quantity}</b>', fs=10, a=TA_CENTER), P(f'<b>Rs. {unit_rate:,.2f}</b>', fs=10, a=TA_RIGHT, fn='Courier'), P(f'<b>Rs. {float(ec.amount):,.2f}</b>', fs=10, a=TA_RIGHT, fn='Courier')])
-    
+        amount = float(ec.amount)
+        qty = int(ec.quantity or 1)
+        if booking.gst_mode == 'include' and gst > 0:
+            taxable = (amount * 100) / (100 + gst)
+            total = amount
+        elif booking.gst_mode == 'exclude' and gst > 0:
+            taxable = amount
+            total = amount + (amount * gst / 100)
+        else:
+            taxable = amount
+            total = amount
+
+        items_data.append([P(str(idx)), P(desc), P(str(qty), a=TA_CENTER), P(f'Rs. {amount:,.2f}', a=TA_RIGHT), P('-', a=TA_RIGHT), P(f'Rs. {taxable:,.2f}', a=TA_RIGHT), P(f'Rs. {total:,.2f}', a=TA_RIGHT)])
+        idx += 1
+
+    # Discount row
     if float(booking.discount or 0) > 0:
-        items_data.append([P('<b>Discount</b>', fs=10), P('', fs=10), P('', fs=10), P(f'<b>Rs. {float(booking.discount):,.2f}</b>', fs=10, a=TA_RIGHT, fn='Courier', c=colors.black)])
-    
-    items_table = Table(items_data, colWidths=[260, 50, 100, 110])
+        disc = float(booking.discount)
+        items_data.append([P(str(idx)), P('<b>Discount</b>'), P('-', a=TA_CENTER), P('-', a=TA_RIGHT), P(f'- Rs. {disc:,.2f}', a=TA_RIGHT, c=colors.black), P('-', a=TA_RIGHT), P(f'- Rs. {disc:,.2f}', a=TA_RIGHT)])
+
+    # Column widths scaled to match HTML invoice proportions and fit within page
+    # S.No: 28, Description: 200, Nights: 45, Amount: 70, Discount: 70, Taxable: 70, Total: 80
+    items_table = Table(items_data, colWidths=[28, 200, 45, 70, 70, 70, 80])
     items_table.setStyle(TableStyle([
         ('LINEBELOW', (0, 0), (-1, 0), 2, colors.black),
         ('LINEBELOW', (0, 1), (-1, -1), 0.5, colors.black),
         ('TOPPADDING', (0, 0), (-1, -1), 4),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+        ('ALIGN', (2, 0), (2, -1), 'CENTER'),
+        ('ALIGN', (3, 0), (-1, -1), 'RIGHT'),
     ]))
     elements.append(items_table)
     elements.append(Spacer(1, 15))
@@ -716,7 +764,7 @@ def create_pdf_invoice(invoice, booking, customer, room):
         gst_amount = float(booking.gst_amount or 0)
         cgst_e = round(gst_amount / 2, 2) if gst_amount > 0 else 0
         sgst_e = gst_amount - cgst_e if gst_amount > 0 else 0
-        totals_data.append([P('<b>Subtotal (before GST):</b>', fs=10, a=TA_RIGHT), P(f'<b>Rs. {float(booking.subtotal):,.2f}</b>', fs=10, a=TA_RIGHT, fn='Courier')])
+        totals_data.append([P('<b>Subtotal:</b>', fs=10, a=TA_RIGHT), P(f'<b>Rs. {float(booking.subtotal):,.2f}</b>', fs=10, a=TA_RIGHT, fn='Courier')])
         if gst_amount > 0:
             charges_data.append([P('', fs=10), P('', fs=10), P('<i>Tax Breakdown</i>', fs=8, c=GRAY, a=TA_RIGHT), P('', fs=10)])
             charges_data.append([P('', fs=10), P('', fs=10), P(f'CGST @{gst_percent:.1f}%', fs=9, a=TA_RIGHT), P(f'{cgst_e:,.2f}', fs=9, a=TA_RIGHT, fn='Courier')])

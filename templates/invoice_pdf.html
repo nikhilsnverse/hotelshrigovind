@@ -333,7 +333,7 @@
         {% set cgst_e = (booking.gst_amount|float / 2)|round(2) if booking.gst_amount else 0 %}
         {% set sgst_e = booking.gst_amount|float - cgst_e if booking.gst_amount else 0 %}
         <tr>
-            <td><strong>Subtotal (before GST):</strong></td>
+            <td><strong>Subtotal:</strong></td>
             <td class="amount text-mono"><strong>Rs. {{ "%.2f"|format(booking.subtotal) }}</strong></td>
         </tr>
         {% if booking.gst_amount and booking.gst_amount > 0 and booking.gst_mode != 'no_gst' %}
