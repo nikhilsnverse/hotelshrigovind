@@ -11,7 +11,7 @@ from functools import wraps
 from flask import Flask, render_template, redirect, url_for, request, jsonify, session, flash, send_file, abort, Response
 import csv
 import io
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 from sqlalchemy.orm import joinedload
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
@@ -2573,9 +2573,9 @@ def init_db():
         if 'customers' in inspector.get_table_names():
             columns = [c['name'] for c in inspector.get_columns('customers')]
             if 'id_proof_file_front' not in columns:
-                db.session.execute('ALTER TABLE customers ADD COLUMN id_proof_file_front VARCHAR(255)')
+                db.session.execute(text('ALTER TABLE customers ADD COLUMN id_proof_file_front VARCHAR(255)'))
             if 'id_proof_file_back' not in columns:
-                db.session.execute('ALTER TABLE customers ADD COLUMN id_proof_file_back VARCHAR(255)')
+                db.session.execute(text('ALTER TABLE customers ADD COLUMN id_proof_file_back VARCHAR(255)'))
             db.session.commit()
         
         # Initialize settings
