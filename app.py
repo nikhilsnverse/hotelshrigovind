@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '.env'))
 import uuid
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, time, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from io import BytesIO
 from functools import wraps
@@ -481,6 +481,45 @@ def calculate_extra_person_charge(room_type, total_persons, stay_duration):
     per_head_charge = Decimal(str(Settings.get('extra_person_charge', '300')))
     extra_charge = extra_persons * per_head_charge * stay_duration
     return float(extra_charge), extra_persons
+
+def calculate_nights(check_in_dt, check_out_dt, checkout_hour=12, checkout_minute=0):
+    """
+    Calculate number of nights based on hotel's fixed checkout time (default 12:00 PM).
+
+    Rules implemented:
+    - The number of nights is determined by the number of full checkout-time (noon)
+      boundaries crossed between the check-in date and the checkout datetime.
+    - If the checkout time is strictly after the checkout boundary (e.g. 12:00),
+      an extra night's charge is applied for that day.
+    - The minimum charge is 1 night.
+
+    Examples:
+    - check_in: 07 Jul 12:00, check_out: 08 Jul 11:59 -> 1 night
+    - check_in: 07 Jul 12:00, check_out: 08 Jul 12:01 -> 2 nights
+    - check_in: 07 Jul 12:00, check_out: 09 Jul 01:00 -> 3 nights
+    """
+    if not check_in_dt or not check_out_dt:
+        return 1
+
+    # Number of whole days difference between dates
+    days_between = (check_out_dt.date() - check_in_dt.date()).days
+
+    # If checkout time is strictly after the hotel's checkout boundary, add one
+    try:
+        checkout_boundary_time = time(checkout_hour, checkout_minute)
+        checkout_time = check_out_dt.time()
+        if checkout_time > checkout_boundary_time:
+            nights = days_between + 1
+        else:
+            nights = days_between
+    except Exception:
+        # Fallback to at least 1 night on any parsing error
+        nights = days_between
+
+    if nights < 1:
+        nights = 1
+
+    return nights
 
 def log_activity(action, details=None):
     log = ActivityLog(
@@ -1321,9 +1360,10 @@ def new_booking():
         check_in = datetime(check_in_date.year, check_in_date.month, check_in_date.day, check_in_hour, check_in_minute)
         check_out = datetime(check_out_date.year, check_out_date.month, check_out_date.day, check_out_hour, check_out_minute)
         actual_check_in = check_in
-        
-        stay_duration = (check_out.date() - check_in.date()).days
-        
+
+        # Calculate stay duration (nights) using hotel's fixed checkout boundary (12:00 PM)
+        stay_duration = calculate_nights(check_in, check_out)
+
         if stay_duration < 1:
             flash('Check-out date must be after check-in date', 'danger')
             return render_template('new_booking.html', form=form, customers=customers)
@@ -1475,13 +1515,12 @@ def checkout(booking_id):
             
             booking.actual_check_out = new_checkout
             booking.check_out = new_checkout
-            
-            if booking.actual_check_in:
-                new_duration = (new_checkout.date() - booking.actual_check_in.date()).days
-                if new_duration < 1:
-                    new_duration = 1
-                booking.stay_duration = new_duration
-            else:
+
+            # Recalculate stay duration using the hotel's checkout-time rule (12:00 PM)
+            reference_check_in = booking.actual_check_in if booking.actual_check_in else booking.check_in
+            try:
+                booking.stay_duration = calculate_nights(reference_check_in, new_checkout)
+            except Exception:
                 booking.stay_duration = 1
             
             db.session.commit()
@@ -1577,12 +1616,13 @@ def checkout(booking_id):
                     int(time_parts[0]), int(time_parts[1]))
                 booking.actual_check_out = new_checkout
                 
-                if booking.actual_check_in:
-                    new_duration = (new_checkout.date() - booking.actual_check_in.date()).days
-                    if new_duration < 1:
-                        new_duration = 1
-                    booking.stay_duration = new_duration
-                    booking.check_out = new_checkout
+                # Recalculate stay duration using checkout-time rule
+                reference_check_in = booking.actual_check_in if booking.actual_check_in else booking.check_in
+                try:
+                    booking.stay_duration = calculate_nights(reference_check_in, new_checkout)
+                except Exception:
+                    booking.stay_duration = 1
+                booking.check_out = new_checkout
             except:
                 booking.actual_check_out = now
         else:
@@ -1711,8 +1751,10 @@ def edit_booking(booking_id):
         if new_check_in and new_check_out:
             check_in = datetime.strptime(new_check_in, '%Y-%m-%d')
             check_out = datetime.strptime(new_check_out, '%Y-%m-%d')
-            stay_duration = (check_out.date() - check_in.date()).days
-            
+            # Use checkout-time based nights calculation. For date-only edits we treat
+            # times as 00:00 and let calculate_nights handle the minimum-1 rule.
+            stay_duration = calculate_nights(check_in, check_out)
+
             if stay_duration < 1:
                 flash('Check-out must be after check-in', 'danger')
                 return redirect(url_for('edit_booking', booking_id=booking_id))

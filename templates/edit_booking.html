@@ -147,10 +147,23 @@ document.addEventListener('DOMContentLoaded', function() {
     const weddingNames = {'all_9_ac': 'All 9 AC Rooms', 'all_rooms': 'All Rooms'};
     
     function calculateNights() {
-        const checkIn = new Date(checkInInput.value);
-        const checkOut = new Date(checkOutInput.value);
-        const diff = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
-        return diff > 0 ? diff : 1;
+        // Implement the same checkout-time based rule as server (12:00 PM boundary)
+        const ci = new Date(checkInInput.value + 'T00:00:00');
+        // For date-only edits, assume checkout time is 12:00 (noon)
+        const co = new Date(checkOutInput.value + 'T12:00:00');
+
+        if (isNaN(ci.getTime()) || isNaN(co.getTime())) return 1;
+
+        const daysBetween = Math.floor((co.setHours(0,0,0,0) - ci.setHours(0,0,0,0)) / (1000 * 60 * 60 * 24));
+
+        // If checkout time is strictly after 12:00 PM, add one more night.
+        // Here, for date-only input we used 12:00 so this will not add.
+        const coTime = new Date(checkOutInput.value + 'T12:00:00').getHours();
+        let nights = daysBetween;
+        // If a time input were present in this form, we'd check it; for now we
+        // treat date-only checkout as exactly 12:00 which counts as not-after-boundary.
+        if (nights < 1) nights = 1;
+        return nights;
     }
     
     function updatePreview() {

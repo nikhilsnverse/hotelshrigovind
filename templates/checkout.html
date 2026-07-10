@@ -186,19 +186,19 @@
             <div class="card-body">
                 <table style="width: 100%; font-size: 14px;">
                     <tr>
-                        <td style="padding: 8px 0; color: var(--gray-600);">Room Charge ({{ booking.stay_duration }} nights)</td>
-                        <td style="text-align: right;" class="text-mono">Rs. {{ "%.3f"|format(bill_data.base_room_charge) }}</td>
+                        <td style="padding: 8px 0; color: var(--gray-600);">Room Charge (<span id="room-nights">{{ booking.stay_duration }}</span> nights)</td>
+                        <td style="text-align: right;" class="text-mono">Rs. <span id="room-charge-amount">{{ "%.3f"|format(bill_data.base_room_charge) }}</span></td>
                     </tr>
                     {% if bill_data.extra_person_charges > 0 %}
                     <tr style="color: var(--warning);">
                         <td style="padding: 8px 0;">Extra Person Charges</td>
-                        <td style="text-align: right;" class="text-mono">Rs. {{ "%.3f"|format(bill_data.extra_person_charges) }}</td>
+                        <td style="text-align: right;" class="text-mono">Rs. <span id="extra-person-amount">{{ "%.3f"|format(bill_data.extra_person_charges) }}</span></td>
                     </tr>
                     {% endif %}
                     {% if bill_data.extra_charges > 0 %}
                     <tr>
                         <td style="padding: 8px 0; color: var(--gray-600);">Extra Charges</td>
-                        <td style="text-align: right;" class="text-mono">Rs. {{ "%.3f"|format(bill_data.extra_charges) }}</td>
+                        <td style="text-align: right;" class="text-mono">Rs. <span id="extra-charges-amount">{{ "%.3f"|format(bill_data.extra_charges) }}</span></td>
                     </tr>
                     {% endif %}
                     {% if booking.discount > 0 %}
@@ -224,11 +224,11 @@
                     </tr>
                     <tr style="border-top: 1px solid var(--gray-300); font-size: 12px;">
                         <td style="padding: 4px 0;">Total GST</td>
-                        <td style="text-align: right;" class="text-mono">{{ "%.2f"|format(bill_data.gst_amount) }}</td>
+                        <td style="text-align: right;" class="text-mono">Rs. <span id="gst-amount">{{ "%.2f"|format(bill_data.gst_amount) }}</span></td>
                     </tr>
                     <tr style="border-top: 2px solid var(--primary);">
                         <td style="padding: 12px 0; font-weight: 700; font-size: 16px;">Grand Total (Incl. GST {{ "%.1f"|format(bill_data.gst_rate) }}%)</td>
-                        <td style="text-align: right; font-weight: 700; font-size: 16px; color: var(--primary);" class="text-mono">Rs. {{ "%.3f"|format(bill_data.total_amount) }}</td>
+                        <td style="text-align: right; font-weight: 700; font-size: 16px; color: var(--primary);" class="text-mono">Rs. <span id="grand-total-amount">{{ "%.3f"|format(bill_data.total_amount) }}</span></td>
                     </tr>
                     {% else %}
                     {% set cgst_e = (bill_data.gst_amount|float / 2)|round(2) if bill_data.gst_amount else 0 %}
@@ -249,24 +249,24 @@
                     </tr>
                     <tr style="border-top: 1px solid var(--gray-300); font-size: 12px;">
                         <td style="padding: 4px 0 4px 10px;">Total GST</td>
-                        <td style="text-align: right;" class="text-mono">{{ "%.2f"|format(bill_data.gst_amount) }}</td>
+                        <td style="text-align: right;" class="text-mono">Rs. <span id="gst-amount">{{ "%.2f"|format(bill_data.gst_amount) }}</span></td>
                     </tr>
                     {% endif %}
                     <tr style="border-top: 2px solid var(--primary);">
                         <td style="padding: 12px 0; font-weight: 700; font-size: 16px;">Grand Total (incl. GST {{ "%.1f"|format(bill_data.gst_rate) }}%)</td>
-                        <td style="text-align: right; font-weight: 700; font-size: 16px; color: var(--primary);" class="text-mono">Rs. {{ "%.3f"|format(bill_data.total_amount) }}</td>
+                        <td style="text-align: right; font-weight: 700; font-size: 16px; color: var(--primary);" class="text-mono">Rs. <span id="grand-total-amount">{{ "%.3f"|format(bill_data.total_amount) }}</span></td>
                     </tr>
                     {% endif %}
                     {% if booking.advance_amount > 0 %}
                     <tr>
                         <td style="padding: 8px 0; color: var(--success);">Advance Paid</td>
-                        <td style="text-align: right; color: var(--success);" class="text-mono">-Rs. {{ "%.3f"|format(booking.advance_amount) }}</td>
+                        <td style="text-align: right; color: var(--success);" class="text-mono">-Rs. <span id="advance-amount">{{ "%.3f"|format(booking.advance_amount) }}</span></td>
                     </tr>
                     {% endif %}
                     {% if bill_data.pending_amount > 0 %}
                     <tr style="color: var(--danger);">
                         <td style="padding: 8px 0; font-weight: 600;">Balance Due</td>
-                        <td style="text-align: right; font-weight: 600;" class="text-mono">Rs. {{ "%.3f"|format(bill_data.pending_amount) }}</td>
+                        <td style="text-align: right; font-weight: 600;" class="text-mono">Rs. <span id="pending-amount">{{ "%.3f"|format(bill_data.pending_amount) }}</span></td>
                     </tr>
                     {% endif %}
                 </table>
@@ -320,6 +320,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (timeInput && !timeInput.value && checkoutTime) {
         timeInput.value = checkoutTime;
     }
+    // Run initial preview computation
+    computeCheckoutPreview();
 });
 
 function updateCheckoutAndReload() {
@@ -342,6 +344,127 @@ function updateCheckoutAndReload() {
     btn.disabled = true;
     
     // Reload with new checkout date and time as query params
+    var url = window.location.pathname + '?checkout_date=' + dateInput.value + '&checkout_time=' + timeInput.value;
+    window.location.href = url;
+}
+
+function formatCurrency(num) {
+    return Number(num).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 3});
+}
+
+function calculateNightsFromDatetimes(checkInStr, checkOutDateStr, checkOutTimeStr) {
+    // checkInStr should be ISO datetime string
+    var ci = new Date(checkInStr);
+    var co = new Date(checkOutDateStr + 'T' + checkOutTimeStr);
+    if (isNaN(ci.getTime()) || isNaN(co.getTime())) return 1;
+
+    var ciDate = new Date(ci.getFullYear(), ci.getMonth(), ci.getDate());
+    var coDate = new Date(co.getFullYear(), co.getMonth(), co.getDate());
+    var daysBetween = Math.floor((coDate - ciDate) / (1000 * 60 * 60 * 24));
+
+    var checkoutBoundaryHour = 12, checkoutBoundaryMinute = 0;
+    if (co.getHours() > checkoutBoundaryHour || (co.getHours() === checkoutBoundaryHour && co.getMinutes() > checkoutBoundaryMinute)) {
+        nights = daysBetween + 1;
+    } else {
+        nights = daysBetween;
+    }
+    if (nights < 1) nights = 1;
+    return nights;
+}
+
+function computeCheckoutPreview() {
+    var dateInput = document.getElementById('checkout_date_input');
+    var timeInput = document.getElementById('checkout_time_input');
+    if (!dateInput || !timeInput) return;
+
+    var checkOutDate = dateInput.value;
+    var checkOutTime = timeInput.value || '12:00';
+
+    // booking check-in datetime (use actual_check_in if present else booking.check_in)
+    var bookingCheckIn = '{{ booking.actual_check_in.strftime("%Y-%m-%dT%H:%M:%S") if booking.actual_check_in else booking.check_in.strftime("%Y-%m-%dT%H:%M:%S") }}';
+
+    var nights = calculateNightsFromDatetimes(bookingCheckIn, checkOutDate, checkOutTime);
+
+    // Update nights display
+    var stayEl = document.getElementById('stay-duration');
+    var roomNightsEl = document.getElementById('room-nights');
+    if (stayEl) stayEl.textContent = nights + ' Night(s)';
+    if (roomNightsEl) roomNightsEl.textContent = nights;
+
+    // Billing values from server-side initial data
+    var roomPrice = {{ room.price_per_night if room else 0 }};
+    var isWedding = {{ 'true' if booking.booking_category == 'wedding' else 'false' }};
+    var weddingPackage = '{{ booking.wedding_package or "" }}';
+    var weddingRates = {'all_9_ac': 15000, 'all_rooms': 17000};
+    var extraChargesStatic = parseFloat(document.getElementById('extra-charges-amount') ? document.getElementById('extra-charges-amount').textContent.replace(/,/g,'') : 0) || 0;
+    var discount = parseFloat('{{ booking.discount or 0 }}') || 0;
+    var advance = parseFloat('{{ booking.advance_amount or 0 }}') || 0;
+    var gstRate = parseFloat('{{ booking.gst_rate or 5 }}') || 0;
+    var gstMode = '{{ booking.gst_mode or "exclude" }}';
+    var persons = parseInt({{ booking.number_of_persons or 1 }});
+    var roomType = '{{ room.room_type if room else "" }}';
+    var extraPersonRate = parseFloat('{{ Settings.get("extra_person_charge", "300") }}') || 300;
+
+    var baseRoomCharge = 0;
+    if (isWedding) {
+        var pkgRate = weddingRates[weddingPackage] || 15000;
+        baseRoomCharge = pkgRate * nights;
+    } else {
+        baseRoomCharge = roomPrice * nights;
+    }
+
+    var freePersons = roomType === 'suite' ? 3 : 2;
+    var extraPersons = persons > freePersons ? persons - freePersons : 0;
+    var extraPersonCharge = extraPersons * extraPersonRate * nights;
+
+    var subtotal = baseRoomCharge + extraPersonCharge + extraChargesStatic - discount;
+    if (subtotal < 0) subtotal = 0;
+
+    var gstAmount = 0, total = 0, basePriceForDisplay = subtotal;
+    if (subtotal > 0) {
+        if (gstMode === 'exclude') {
+            gstAmount = subtotal * gstRate / 100;
+            total = subtotal + gstAmount;
+            basePriceForDisplay = subtotal;
+        } else if (gstMode === 'include') {
+            basePriceForDisplay = (subtotal * 100) / (100 + gstRate);
+            gstAmount = subtotal - basePriceForDisplay;
+            total = subtotal;
+        } else {
+            gstAmount = 0;
+            total = subtotal;
+            basePriceForDisplay = subtotal;
+        }
+    }
+
+    // Update DOM elements
+    var roomChargeEl = document.getElementById('room-charge-amount');
+    if (roomChargeEl) roomChargeEl.textContent = formatCurrency(baseRoomCharge);
+    var extraPersonEl = document.getElementById('extra-person-amount');
+    if (extraPersonEl) extraPersonEl.textContent = formatCurrency(extraPersonCharge);
+    var extraChargesEl = document.getElementById('extra-charges-amount');
+    if (extraChargesEl) extraChargesEl.textContent = formatCurrency(extraChargesStatic);
+    var subtotalEl = document.getElementById('room-charge-amount');
+    var gstEl = document.getElementById('gst-amount');
+    if (gstEl) gstEl.textContent = formatCurrency(gstAmount);
+    var grandEl = document.getElementById('grand-total-amount');
+    if (grandEl) grandEl.textContent = formatCurrency(total);
+    var pendingEl = document.getElementById('pending-amount');
+    if (pendingEl) pendingEl.textContent = formatCurrency(Math.max(0, total - advance));
+    var advanceEl = document.getElementById('advance-amount');
+    if (advanceEl) advanceEl.textContent = formatCurrency(advance);
+}
+
+// Recompute preview when date/time inputs change
+document.getElementById('checkout_date_input')?.addEventListener('change', computeCheckoutPreview);
+document.getElementById('checkout_time_input')?.addEventListener('change', computeCheckoutPreview);
+
+// Update button to recompute before redirecting
+function updateCheckoutAndReload() {
+    computeCheckoutPreview();
+    var dateInput = document.getElementById('checkout_date_input');
+    var timeInput = document.getElementById('checkout_time_input');
+    if (!dateInput || !timeInput) { alert('Please select checkout date/time'); return; }
     var url = window.location.pathname + '?checkout_date=' + dateInput.value + '&checkout_time=' + timeInput.value;
     window.location.href = url;
 }
