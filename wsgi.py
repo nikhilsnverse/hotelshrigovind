@@ -4,11 +4,13 @@ load_dotenv()
 
 from app import app, init_db, migrate_database
 
-init_db()
-try:
-    migrate_database()
-except Exception:
-    pass
+# Ensure initialization runs inside the Flask application context
+with app.app_context():
+    init_db()
+    try:
+        migrate_database()
+    except Exception:
+        pass
 
 application = app
 

@@ -56,7 +56,8 @@ def inject_globals():
         if not filename:
             return None
         return r2_storage.get_url(filename)
-    return dict(datetime=datetime, hotel=get_hotel_settings(), r2_url=get_r2_url)
+    # Expose `Settings` to templates so they can call `Settings.get(...)` where needed
+    return dict(datetime=datetime, hotel=get_hotel_settings(), r2_url=get_r2_url, Settings=globals().get('Settings'))
 
 @app.template_filter('month_name')
 def month_name_filter(month):
