@@ -61,8 +61,9 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if customer.id_proof_file %}
-                            {% set proof_url = r2_url(customer.id_proof_file) or url_for('static', filename='uploads/' + customer.id_proof_file) %}
+                            {% set file_name = customer.id_proof_file_front or customer.id_proof_file_back or customer.id_proof_file %}
+                            {% if file_name %}
+                            {% set proof_url = r2_url(file_name) or url_for('static', filename='uploads/' + file_name) %}
                             <a href="{{ proof_url }}" target="_blank">
                                 <img src="{{ proof_url }}" 
                                      alt="ID Proof" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid var(--gray-300);">

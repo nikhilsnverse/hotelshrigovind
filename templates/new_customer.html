@@ -59,11 +59,17 @@
                 </div>
             </div>
             
-            <div class="form-group">
-                <label class="form-label">Upload ID Proof</label>
-                <input type="file" name="id_proof" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
-                <small style="color: var(--gray-500);">Accepted formats: JPG, PNG, PDF (Max 5MB)</small>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Aadhaar Front Photo</label>
+                    <input type="file" name="id_proof_front" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Aadhaar Back Photo</label>
+                    <input type="file" name="id_proof_back" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+                </div>
             </div>
+            <small style="color: var(--gray-500);">Accepted formats: JPG, PNG, PDF (Max 5MB each)</small>
             
             <hr style="margin: 25px 0; border: none; border-top: 1px solid var(--gray-200);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">

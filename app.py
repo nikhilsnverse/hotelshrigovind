@@ -11,6 +11,7 @@ from functools import wraps
 from flask import Flask, render_template, redirect, url_for, request, jsonify, session, flash, send_file, abort, Response
 import csv
 import io
+from sqlalchemy import inspect
 from sqlalchemy.orm import joinedload
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
@@ -164,6 +165,8 @@ class Customer(db.Model):
     id_proof_type = db.Column(db.String(20))
     id_proof_number = db.Column(db.String(50))
     id_proof_file = db.Column(db.String(255))
+    id_proof_file_front = db.Column(db.String(255))
+    id_proof_file_back = db.Column(db.String(255))
     total_stays = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -533,6 +536,14 @@ def log_activity(action, details=None):
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+def save_proof_file(file, prefix):
+    filename = secure_filename(f"{prefix}_{uuid.uuid4()}_{file.filename}")
+    if r2_storage.is_configured():
+        r2_storage.upload_fileobj(file, filename)
+    else:
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+    return filename
 
 def admin_required(f):
     @wraps(f)
@@ -1150,15 +1161,20 @@ def new_customer():
             id_proof_number=form.id_proof_number.data
         )
         
+        if 'id_proof_front' in request.files:
+            file = request.files['id_proof_front']
+            if file and file.filename and allowed_file(file.filename):
+                customer.id_proof_file_front = save_proof_file(file, 'customer_front')
+
+        if 'id_proof_back' in request.files:
+            file = request.files['id_proof_back']
+            if file and file.filename and allowed_file(file.filename):
+                customer.id_proof_file_back = save_proof_file(file, 'customer_back')
+
         if 'id_proof' in request.files:
             file = request.files['id_proof']
-            if file and allowed_file(file.filename):
-                filename = f'{uuid.uuid4()}_{secure_filename(file.filename)}'
-                if r2_storage.is_configured():
-                    r2_storage.upload_fileobj(file, filename)
-                else:
-                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                customer.id_proof_file = filename
+            if file and file.filename and allowed_file(file.filename):
+                customer.id_proof_file = save_proof_file(file, 'customer')
         
         db.session.add(customer)
         db.session.commit()
@@ -1199,15 +1215,20 @@ def edit_customer(customer_id):
         customer.id_proof_type = form.id_proof_type.data
         customer.id_proof_number = form.id_proof_number.data
         
+        if 'id_proof_front' in request.files and request.files['id_proof_front'].filename:
+            file = request.files['id_proof_front']
+            if file and allowed_file(file.filename):
+                customer.id_proof_file_front = save_proof_file(file, f"{customer.id}_front")
+
+        if 'id_proof_back' in request.files and request.files['id_proof_back'].filename:
+            file = request.files['id_proof_back']
+            if file and allowed_file(file.filename):
+                customer.id_proof_file_back = save_proof_file(file, f"{customer.id}_back")
+
         if 'id_proof' in request.files and request.files['id_proof'].filename:
             file = request.files['id_proof']
             if file and allowed_file(file.filename):
-                filename = secure_filename(f"{customer.id}_id_proof_{file.filename}")
-                if r2_storage.is_configured():
-                    r2_storage.upload_fileobj(file, filename)
-                else:
-                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                customer.id_proof_file = filename
+                customer.id_proof_file = save_proof_file(file, f"{customer.id}_legacy")
         
         db.session.commit()
         log_activity('Update Customer', f'Customer {customer.name} updated')
@@ -2546,6 +2567,16 @@ def api_available_rooms():
 def init_db():
     with app.app_context():
         db.create_all()
+        
+        # Ensure Aadhaar proof columns exist for existing databases
+        inspector = inspect(db.engine)
+        if 'customers' in inspector.get_table_names():
+            columns = [c['name'] for c in inspector.get_columns('customers')]
+            if 'id_proof_file_front' not in columns:
+                db.session.execute('ALTER TABLE customers ADD COLUMN id_proof_file_front VARCHAR(255)')
+            if 'id_proof_file_back' not in columns:
+                db.session.execute('ALTER TABLE customers ADD COLUMN id_proof_file_back VARCHAR(255)')
+            db.session.commit()
         
         # Initialize settings
         init_settings()

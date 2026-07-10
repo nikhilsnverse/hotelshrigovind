@@ -59,16 +59,32 @@
                 </div>
             </div>
             
-            <div class="form-group">
-                <label class="form-label">Upload ID Proof</label>
-                <input type="file" name="id_proof" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
-                <small style="color: var(--gray-500);">Accepted formats: JPG, PNG, PDF (Max 5MB)</small>
-                {% if customer.id_proof_file %}
-                <p style="margin-top: 5px; color: var(--success);">
-                    <i class="fas fa-check"></i> Current file: {{ customer.id_proof_file }}
-                </p>
-                {% endif %}
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Aadhaar Front Photo</label>
+                    <input type="file" name="id_proof_front" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+                    {% if customer.id_proof_file_front %}
+                    <p style="margin-top: 5px; color: var(--success);">
+                        <i class="fas fa-check"></i> Current front file: {{ customer.id_proof_file_front }}
+                    </p>
+                    {% endif %}
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Aadhaar Back Photo</label>
+                    <input type="file" name="id_proof_back" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+                    {% if customer.id_proof_file_back %}
+                    <p style="margin-top: 5px; color: var(--success);">
+                        <i class="fas fa-check"></i> Current back file: {{ customer.id_proof_file_back }}
+                    </p>
+                    {% endif %}
+                </div>
             </div>
+            <small style="color: var(--gray-500);">Accepted formats: JPG, PNG, PDF (Max 5MB each)</small>
+            {% if customer.id_proof_file and not customer.id_proof_file_front and not customer.id_proof_file_back %}
+            <p style="margin-top: 10px; color: var(--warning);">
+                <i class="fas fa-info-circle"></i> Legacy ID proof file still present: {{ customer.id_proof_file }}
+            </p>
+            {% endif %}
             
             <div style="margin-top: 25px;">
                 <button type="submit" class="btn btn-primary">
