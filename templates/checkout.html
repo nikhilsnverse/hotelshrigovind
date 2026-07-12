@@ -226,9 +226,13 @@
                         <td style="padding: 4px 0;">Total GST</td>
                         <td style="text-align: right;" class="text-mono">Rs. <span id="gst-amount">{{ "%.2f"|format(bill_data.gst_amount) }}</span></td>
                     </tr>
+                    <tr id="round-off-row" style="{% if not bill_data.round_off or bill_data.round_off|float == 0 %}display: none;{% endif %}">
+                        <td style="padding: 4px 0;">Round Off</td>
+                        <td style="text-align: right;" class="text-mono"><span id="round-off-amount">{{ "%+.2f"|format(bill_data.round_off|float) }}</span></td>
+                    </tr>
                     <tr style="border-top: 2px solid var(--primary);">
                         <td style="padding: 12px 0; font-weight: 700; font-size: 16px;">Grand Total (Incl. GST {{ "%.1f"|format(bill_data.gst_rate) }}%)</td>
-                        <td style="text-align: right; font-weight: 700; font-size: 16px; color: var(--primary);" class="text-mono">Rs. <span id="grand-total-amount">{{ "%.3f"|format(bill_data.total_amount) }}</span></td>
+                        <td style="text-align: right; font-weight: 700; font-size: 16px; color: var(--primary);" class="text-mono">Rs. <span id="grand-total-amount">{{ "%.0f"|format(bill_data.total_amount) }}</span></td>
                     </tr>
                     {% else %}
                     {% set cgst_e = (bill_data.gst_amount|float / 2)|round(2) if bill_data.gst_amount else 0 %}
@@ -252,9 +256,13 @@
                         <td style="text-align: right;" class="text-mono">Rs. <span id="gst-amount">{{ "%.2f"|format(bill_data.gst_amount) }}</span></td>
                     </tr>
                     {% endif %}
+                    <tr id="round-off-row" style="{% if not bill_data.round_off or bill_data.round_off|float == 0 %}display: none;{% endif %}">
+                        <td style="padding: 4px 0;">Round Off</td>
+                        <td style="text-align: right;" class="text-mono"><span id="round-off-amount">{{ "%+.2f"|format(bill_data.round_off|float) }}</span></td>
+                    </tr>
                     <tr style="border-top: 2px solid var(--primary);">
                         <td style="padding: 12px 0; font-weight: 700; font-size: 16px;">Grand Total (incl. GST {{ "%.1f"|format(bill_data.gst_rate) }}%)</td>
-                        <td style="text-align: right; font-weight: 700; font-size: 16px; color: var(--primary);" class="text-mono">Rs. <span id="grand-total-amount">{{ "%.3f"|format(bill_data.total_amount) }}</span></td>
+                        <td style="text-align: right; font-weight: 700; font-size: 16px; color: var(--primary);" class="text-mono">Rs. <span id="grand-total-amount">{{ "%.0f"|format(bill_data.total_amount) }}</span></td>
                     </tr>
                     {% endif %}
                     {% if booking.advance_amount > 0 %}
@@ -438,6 +446,8 @@ function computeCheckoutPreview() {
     }
 
     // Update DOM elements
+    var roundedTotal = Math.round(total);
+    var roundOff = roundedTotal - total;
     var roomChargeEl = document.getElementById('room-charge-amount');
     if (roomChargeEl) roomChargeEl.textContent = formatCurrency(baseRoomCharge);
     var extraPersonEl = document.getElementById('extra-person-amount');
@@ -447,10 +457,14 @@ function computeCheckoutPreview() {
     var subtotalEl = document.getElementById('room-charge-amount');
     var gstEl = document.getElementById('gst-amount');
     if (gstEl) gstEl.textContent = formatCurrency(gstAmount);
+    var roundOffRow = document.getElementById('round-off-row');
+    var roundOffEl = document.getElementById('round-off-amount');
+    if (roundOffEl) roundOffEl.textContent = (roundOff >= 0 ? '+' : '') + roundOff.toFixed(2);
+    if (roundOffRow) roundOffRow.style.display = Math.abs(roundOff) < 0.005 ? 'none' : '';
     var grandEl = document.getElementById('grand-total-amount');
-    if (grandEl) grandEl.textContent = formatCurrency(total);
+    if (grandEl) grandEl.textContent = roundedTotal.toLocaleString();
     var pendingEl = document.getElementById('pending-amount');
-    if (pendingEl) pendingEl.textContent = formatCurrency(Math.max(0, total - advance));
+    if (pendingEl) pendingEl.textContent = formatCurrency(Math.max(0, roundedTotal - advance));
     var advanceEl = document.getElementById('advance-amount');
     if (advanceEl) advanceEl.textContent = formatCurrency(advance);
 }

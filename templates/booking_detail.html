@@ -37,6 +37,7 @@
                         {% endif %}
                         <p><strong>Check-out:</strong> {{ booking.check_out.strftime('%d %b %Y, %I:%M %p') }}</p>
                         <p><strong>Duration:</strong> {{ booking.stay_duration }} night(s)</p>
+                        <p><strong>Billing Rule:</strong> {{ '12 Hours = 1 Night' if booking.billing_mode == '12_hours' or not booking.billing_mode else '24 Hours = 1 Night' }}</p>
                         {% if booking.actual_check_out %}
                         <p><strong>Actual Check-out:</strong> {{ booking.actual_check_out.strftime('%d %b %Y, %I:%M %p') }}</p>
                         {% endif %}
@@ -192,9 +193,15 @@
                     {% set taxable = booking.total_amount|float - booking.gst_amount|float %}
                     {% set cgst = (booking.gst_amount|float / 2)|round(2) %}
                     {% set sgst = booking.gst_amount|float - cgst %}
+                    {% if booking.round_off and booking.round_off|float != 0 %}
+                    <tr>
+                        <td style="padding: 8px 0;">Round Off</td>
+                        <td style="text-align: right;" class="text-mono">{{ "%+.2f"|format(booking.round_off|float) }}</td>
+                    </tr>
+                    {% endif %}
                     <tr style="border-top: 2px solid var(--gray-200);">
                         <td style="padding: 10px 0; font-weight: 700; font-size: 15px;">Grand Total (Incl. GST {{ "%.1f"|format(booking.gst_rate|float) }}%)</td>
-                        <td style="text-align: right; font-weight: 700; font-size: 15px; color: var(--primary);" class="text-mono">Rs. {{ "%.2f"|format(booking.total_amount) }}</td>
+                        <td style="text-align: right; font-weight: 700; font-size: 15px; color: var(--primary);" class="text-mono">Rs. {{ "%.0f"|format(booking.total_amount) }}</td>
                     </tr>
                     <tr><td colspan="2" style="padding: 8px 0 3px 0; font-size: 11px; color: var(--gray-500);"><strong>Included Tax Breakdown</strong></td></tr>
                     <tr style="font-size: 12px;">
@@ -235,9 +242,15 @@
                         <td style="text-align: right;" class="text-mono">{{ "%.2f"|format(booking.gst_amount) }}</td>
                     </tr>
                     {% endif %}
+                    {% if booking.round_off and booking.round_off|float != 0 %}
+                    <tr>
+                        <td style="padding: 8px 0;">Round Off</td>
+                        <td style="text-align: right;" class="text-mono">{{ "%+.2f"|format(booking.round_off|float) }}</td>
+                    </tr>
+                    {% endif %}
                     <tr style="border-top: 2px solid var(--primary); background: var(--gray-50);">
                         <td style="padding: 12px 8px; font-weight: 700; font-size: 16px;">Grand Total (incl. GST {{ "%.1f"|format(booking.gst_rate|float) }}%)</td>
-                        <td style="text-align: right; font-weight: 700; font-size: 16px; color: var(--primary);" class="text-mono">Rs. {{ "%.2f"|format(booking.total_amount) }}</td>
+                        <td style="text-align: right; font-weight: 700; font-size: 16px; color: var(--primary);" class="text-mono">Rs. {{ "%.0f"|format(booking.total_amount) }}</td>
                     </tr>
                     {% endif %}
                 </table>

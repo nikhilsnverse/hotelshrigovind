@@ -331,9 +331,15 @@
                 <td style="text-align: right;" class="text-mono">{{ "%.2f"|format(booking.gst_amount) }}</td>
             </tr>
             {% endif %}
+            {% if booking.round_off and booking.round_off|float != 0 %}
+            <tr>
+                <td>Round Off:</td>
+                <td style="text-align: right;" class="text-mono">{{ "%+.2f"|format(booking.round_off|float) }}</td>
+            </tr>
+            {% endif %}
             <tr>
                 <td><strong>Grand Total:</strong></td>
-                <td style="text-align: right;" class="text-mono"><strong>Rs. {{ "%.2f"|format(booking.total_amount) }}</strong></td>
+                <td style="text-align: right;" class="text-mono"><strong>Rs. {{ "%.0f"|format(booking.total_amount) }}</strong></td>
             </tr>
         {% endif %}
         {% if booking.advance_amount and booking.advance_amount > 0 and booking.pending_amount > 0 %}

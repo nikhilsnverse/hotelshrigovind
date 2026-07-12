@@ -1,3 +1,4 @@
+import math
 import os
 from dotenv import load_dotenv
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -199,6 +200,7 @@ class Booking(db.Model):
     actual_check_in = db.Column(db.DateTime)
     actual_check_out = db.Column(db.DateTime)
     stay_duration = db.Column(db.Integer, nullable=False)
+    billing_mode = db.Column(db.String(20), default='12_hours')
     number_of_persons = db.Column(db.Integer, default=1)
     gst_mode = db.Column(db.String(20), default='exclude')
     room_charge = db.Column(db.Numeric(10,3), default=0)
@@ -231,6 +233,21 @@ class Booking(db.Model):
     payments = db.relationship('Payment', backref='booking', lazy=True)
     invoice = db.relationship('Invoice', backref='booking', uselist=False)
     accompanying_persons = db.relationship('AccompanyingPerson', backref='booking', lazy=True)
+
+    @property
+    def round_off(self):
+        """Round-off adjustment applied to reach the whole-rupee grand total."""
+        try:
+            total = Decimal(str(self.total_amount or 0))
+            gst = Decimal(str(self.gst_amount or 0))
+            subtotal = Decimal(str(self.subtotal or 0))
+            if self.gst_mode == 'exclude':
+                pre_total = subtotal + gst
+            else:
+                pre_total = subtotal
+            return total - pre_total
+        except Exception:
+            return Decimal('0')
 
 class Payment(db.Model):
     __tablename__ = 'payments'
@@ -381,6 +398,13 @@ def generate_invoice_number():
         next_num = 1
     return f'{next_num:09d}'
 
+def round_off_amount(value):
+    """Round a monetary amount to the nearest whole rupee (HALF_UP)."""
+    try:
+        return Decimal(str(value)).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+    except Exception:
+        return Decimal('0')
+
 def calculate_bill(booking):
     try:
         if booking.booking_category == 'wedding':
@@ -443,6 +467,11 @@ def calculate_bill(booking):
             base_price = Decimal('0')
             display_subtotal = Decimal('0')
         
+        # Always round off the grand total to the nearest whole rupee
+        unrounded_total = total
+        total = round_off_amount(total)
+        round_off = total - unrounded_total
+        
         advance = booking.advance_amount if booking.advance_amount else Decimal('0')
         pending = total - advance
         
@@ -456,6 +485,7 @@ def calculate_bill(booking):
             'gst_rate': gst_rate,
             'gst_mode': booking.gst_mode or 'exclude',
             'total_amount': total,
+            'round_off': round_off,
             'pending_amount': pending,
             'stay_duration': booking.stay_duration or 1
         }
@@ -468,6 +498,7 @@ def calculate_bill(booking):
             'gst_amount': Decimal('0'),
             'gst_mode': 'exclude',
             'total_amount': Decimal('0'),
+            'round_off': Decimal('0'),
             'pending_amount': Decimal('0'),
             'stay_duration': 1,
             'error': str(e)
@@ -486,29 +517,32 @@ def calculate_extra_person_charge(room_type, total_persons, stay_duration):
     extra_charge = extra_persons * per_head_charge * stay_duration
     return float(extra_charge), extra_persons
 
-def calculate_nights(check_in_dt, check_out_dt, checkout_hour=12, checkout_minute=0):
+def calculate_nights(check_in_dt, check_out_dt, checkout_hour=12, checkout_minute=0, billing_mode='default'):
     """
-    Calculate number of nights based on hotel's fixed checkout time (default 12:00 PM).
+    Calculate stay duration in nights using either hotel-style noon cutoff or
+    explicit 12-hour / 24-hour billing modes.
 
-    Rules implemented:
-    - The number of nights is determined by the number of full checkout-time (noon)
-      boundaries crossed between the check-in date and the checkout datetime.
-    - If the checkout time is strictly after the checkout boundary (e.g. 12:00),
-      an extra night's charge is applied for that day.
-    - The minimum charge is 1 night.
-
-    Examples:
-    - check_in: 07 Jul 12:00, check_out: 08 Jul 11:59 -> 1 night
-    - check_in: 07 Jul 12:00, check_out: 08 Jul 12:01 -> 2 nights
-    - check_in: 07 Jul 12:00, check_out: 09 Jul 01:00 -> 3 nights
+    - default: preserve the existing hotel checkout-boundary logic (12:00 PM)
+    - 12_hours: charge one night for each full 12-hour block elapsed
+    - 24_hours: charge one night for each full 24-hour block elapsed
+    - minimum charge is always at least 1 night
     """
     if not check_in_dt or not check_out_dt:
         return 1
 
-    # Number of whole days difference between dates
+    if billing_mode == '12_hours':
+        elapsed_seconds = max(0, (check_out_dt - check_in_dt).total_seconds())
+        nights = max(1, math.ceil(elapsed_seconds / 43200))
+        return nights
+
+    if billing_mode == '24_hours':
+        elapsed_seconds = max(0, (check_out_dt - check_in_dt).total_seconds())
+        nights = max(1, math.ceil(elapsed_seconds / 86400))
+        return nights
+
+    # Preserve the previous hotel-style logic for legacy/default behavior
     days_between = (check_out_dt.date() - check_in_dt.date()).days
 
-    # If checkout time is strictly after the hotel's checkout boundary, add one
     try:
         checkout_boundary_time = time(checkout_hour, checkout_minute)
         checkout_time = check_out_dt.time()
@@ -517,7 +551,6 @@ def calculate_nights(check_in_dt, check_out_dt, checkout_hour=12, checkout_minut
         else:
             nights = days_between
     except Exception:
-        # Fallback to at least 1 night on any parsing error
         nights = days_between
 
     if nights < 1:
@@ -809,7 +842,9 @@ def create_pdf_invoice(invoice, booking, customer, room):
         charges_data.append([P(f'CGST @{gst_rate/2:.1f}%', fs=9), P('', fs=10), P('', fs=10), P(f'{cgst:,.2f}', fs=9, a=TA_RIGHT, fn='Courier')])
         charges_data.append([P(f'SGST @{gst_rate/2:.1f}%', fs=9), P('', fs=10), P('', fs=10), P(f'{sgst:,.2f}', fs=9, a=TA_RIGHT, fn='Courier')])
         charges_data.append([P('Total GST', fs=9, c=GRAY), P('', fs=10), P('', fs=10), P(f'{float(booking.gst_amount):,.2f}', fs=9, c=GRAY, a=TA_RIGHT, fn='Courier')])
-        charges_data.append([P('', fs=10), P('', fs=10), P(f'<b>Grand Total:</b>', fs=11, c=PRIMARY, a=TA_RIGHT), P(f'<b>Rs. {float(booking.total_amount):,.2f}</b>', fs=11, c=PRIMARY, a=TA_RIGHT, fn='Courier')])
+        if abs(float(booking.round_off or 0)) >= 0.005:
+            charges_data.append([P('Round Off', fs=9, c=GRAY), P('', fs=10), P('', fs=10), P(f'{float(booking.round_off):+,.2f}', fs=9, c=GRAY, a=TA_RIGHT, fn='Courier')])
+        charges_data.append([P('', fs=10), P('', fs=10), P(f'<b>Grand Total:</b>', fs=11, c=PRIMARY, a=TA_RIGHT), P(f'<b>Rs. {float(booking.total_amount):,.0f}</b>', fs=11, c=PRIMARY, a=TA_RIGHT, fn='Courier')])
     else:
         gst_amount = float(booking.gst_amount or 0)
         cgst_e = round(gst_amount / 2, 2) if gst_amount > 0 else 0
@@ -820,7 +855,9 @@ def create_pdf_invoice(invoice, booking, customer, room):
             charges_data.append([P('', fs=10), P('', fs=10), P(f'CGST @{gst_percent:.1f}%', fs=9, a=TA_RIGHT), P(f'{cgst_e:,.2f}', fs=9, a=TA_RIGHT, fn='Courier')])
             charges_data.append([P('', fs=10), P('', fs=10), P(f'SGST @{gst_percent:.1f}%', fs=9, a=TA_RIGHT), P(f'{sgst_e:,.2f}', fs=9, a=TA_RIGHT, fn='Courier')])
             charges_data.append([P('', fs=10), P('', fs=10), P('Total GST', fs=9, c=GRAY, a=TA_RIGHT), P(f'{gst_amount:,.2f}', fs=9, c=GRAY, a=TA_RIGHT, fn='Courier')])
-        charges_data.append([P('', fs=10), P('', fs=10), P(f'<b>Grand Total:</b>', fs=11, c=PRIMARY, a=TA_RIGHT), P(f'<b>Rs. {float(booking.total_amount):,.2f}</b>', fs=11, c=PRIMARY, a=TA_RIGHT, fn='Courier')])
+        if abs(float(booking.round_off or 0)) >= 0.005:
+            charges_data.append([P('', fs=10), P('', fs=10), P('Round Off', fs=9, c=GRAY, a=TA_RIGHT), P(f'{float(booking.round_off):+,.2f}', fs=9, c=GRAY, a=TA_RIGHT, fn='Courier')])
+        charges_data.append([P('', fs=10), P('', fs=10), P(f'<b>Grand Total:</b>', fs=11, c=PRIMARY, a=TA_RIGHT), P(f'<b>Rs. {float(booking.total_amount):,.0f}</b>', fs=11, c=PRIMARY, a=TA_RIGHT, fn='Courier')])
     
     if charges_data:
         charges_table = Table(charges_data, colWidths=[180, 80, 110, 150])
@@ -1357,6 +1394,9 @@ def new_booking():
         
         check_in_time_str = request.form.get('check_in_time')
         check_out_time_str = request.form.get('check_out_time')
+        billing_mode = request.form.get('billing_mode', '12_hours')
+        if billing_mode not in ['12_hours', '24_hours']:
+            billing_mode = '12_hours'
         now = datetime.now()
         
         try:
@@ -1383,8 +1423,8 @@ def new_booking():
         check_out = datetime(check_out_date.year, check_out_date.month, check_out_date.day, check_out_hour, check_out_minute)
         actual_check_in = check_in
 
-        # Calculate stay duration (nights) using hotel's fixed checkout boundary (12:00 PM)
-        stay_duration = calculate_nights(check_in, check_out)
+        # Calculate stay duration using the selected billing mode
+        stay_duration = calculate_nights(check_in, check_out, billing_mode=billing_mode)
 
         if stay_duration < 1:
             flash('Check-out date must be after check-in date', 'danger')
@@ -1438,6 +1478,7 @@ def new_booking():
             check_out=check_out,
             actual_check_in=actual_check_in,
             stay_duration=stay_duration,
+            billing_mode=billing_mode,
             number_of_persons=number_of_persons,
             purpose_of_visit=form.purpose_of_visit.data,
             gst_mode=gst_mode,
@@ -1477,6 +1518,7 @@ def new_booking():
             booking.gst_amount = total_room_charge - base_price
             booking.total_amount = total_room_charge
         
+        booking.total_amount = round_off_amount(booking.total_amount)
         booking.pending_amount = booking.total_amount - booking.advance_amount
         
         if room:
@@ -1541,7 +1583,11 @@ def checkout(booking_id):
             # Recalculate stay duration using the hotel's checkout-time rule (12:00 PM)
             reference_check_in = booking.actual_check_in if booking.actual_check_in else booking.check_in
             try:
-                booking.stay_duration = calculate_nights(reference_check_in, new_checkout)
+                booking.stay_duration = calculate_nights(
+                    reference_check_in,
+                    new_checkout,
+                    billing_mode=booking.billing_mode or '12_hours'
+                )
             except Exception:
                 booking.stay_duration = 1
             
@@ -1641,7 +1687,11 @@ def checkout(booking_id):
                 # Recalculate stay duration using checkout-time rule
                 reference_check_in = booking.actual_check_in if booking.actual_check_in else booking.check_in
                 try:
-                    booking.stay_duration = calculate_nights(reference_check_in, new_checkout)
+                    booking.stay_duration = calculate_nights(
+                        reference_check_in,
+                        new_checkout,
+                        billing_mode=booking.billing_mode or '12_hours'
+                    )
                 except Exception:
                     booking.stay_duration = 1
                 booking.check_out = new_checkout
@@ -1769,13 +1819,16 @@ def edit_booking(booking_id):
         new_check_out = request.form.get('check_out_date')
         new_persons = int(request.form.get('number_of_persons', 1))
         purpose_of_visit = request.form.get('purpose_of_visit', booking.purpose_of_visit)
+        new_billing_mode = request.form.get('billing_mode', booking.billing_mode or '12_hours')
+        if new_billing_mode not in ['12_hours', '24_hours']:
+            new_billing_mode = booking.billing_mode or '12_hours'
         
         if new_check_in and new_check_out:
             check_in = datetime.strptime(new_check_in, '%Y-%m-%d')
             check_out = datetime.strptime(new_check_out, '%Y-%m-%d')
             # Use checkout-time based nights calculation. For date-only edits we treat
             # times as 00:00 and let calculate_nights handle the minimum-1 rule.
-            stay_duration = calculate_nights(check_in, check_out)
+            stay_duration = calculate_nights(check_in, check_out, billing_mode=new_billing_mode)
 
             if stay_duration < 1:
                 flash('Check-out must be after check-in', 'danger')
@@ -1784,6 +1837,7 @@ def edit_booking(booking_id):
             booking.check_in = check_in
             booking.check_out = check_out
             booking.stay_duration = stay_duration
+            booking.billing_mode = new_billing_mode
             booking.number_of_persons = new_persons
             booking.purpose_of_visit = purpose_of_visit
             
@@ -1820,6 +1874,7 @@ def edit_booking(booking_id):
                 booking.gst_amount = subtotal - base_price
                 booking.total_amount = subtotal
             
+            booking.total_amount = round_off_amount(booking.total_amount)
             booking.pending_amount = booking.total_amount - booking.advance_amount
             
             db.session.commit()
@@ -2684,6 +2739,7 @@ def migrate_database():
             ('purpose_of_visit', "ALTER TABLE bookings ADD COLUMN purpose_of_visit VARCHAR(50)"),
             ('booking_category', "ALTER TABLE bookings ADD COLUMN booking_category VARCHAR(20) DEFAULT 'normal'"),
             ('wedding_package', "ALTER TABLE bookings ADD COLUMN wedding_package VARCHAR(20)"),
+            ('billing_mode', "ALTER TABLE bookings ADD COLUMN billing_mode VARCHAR(20) DEFAULT '12_hours'"),
         ]
         
         for col_name, alter_sql in migration_columns:

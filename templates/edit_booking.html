@@ -58,6 +58,14 @@
             
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 20px;">
                 <div class="form-group">
+                    <label class="form-label">Billing Rule *</label>
+                    <select name="billing_mode" class="form-control form-select">
+                        <option value="12_hours" {{ 'selected' if booking.billing_mode == '12_hours' or not booking.billing_mode else '' }}>12 Hours = 1 Night</option>
+                        <option value="24_hours" {{ 'selected' if booking.billing_mode == '24_hours' else '' }}>24 Hours = 1 Night</option>
+                    </select>
+                    <small style="color: var(--gray-500);">Choose the rule used to count stay duration.</small>
+                </div>
+                <div class="form-group">
                     <label class="form-label">Number of Persons *</label>
                     <input type="number" name="number_of_persons" class="form-control" value="{{ booking.number_of_persons }}" min="1" max="20" required>
                     <small style="color: var(--gray-500);">
