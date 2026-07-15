@@ -55,7 +55,8 @@
                         <td>{{ customer.name if customer else 'N/A' }}</td>
                         <td class="text-mono">
                             {% if booking.booking_category == 'wedding' %}
-                            <span style="color: var(--accent);">Wedding<br><small>{{ {'all_9_ac': 'All 9 AC', 'all_rooms': 'All Rooms'}.get(booking.wedding_package, '') }}</small></span>
+                            {% set wp = booking.wedding_package %}
+                            <span style="color: var(--accent);">Wedding<br><small>{% if wp == 'custom_ac' %}Custom AC ({{ booking.wedding_custom_rooms or 0 }}){% else %}{{ {'all_9_ac': 'All 9 AC', 'all_rooms': 'All Rooms'}.get(wp, '') }}{% endif %}</small></span>
                             {% else %}
                             {{ room.room_number if room else 'N/A' }}
                             {% endif %}

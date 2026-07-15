@@ -25,8 +25,14 @@
             <div>
                 <h4 style="color: var(--gray-500); font-size: 12px; text-transform: uppercase; margin-bottom: 10px;">{% if booking.booking_category == 'wedding' %}Wedding Package{% else %}Room{% endif %}</h4>
                 {% if booking.booking_category == 'wedding' %}
-                <p style="margin: 0;"><strong>{{ {'all_9_ac': 'All 9 AC Rooms', 'all_rooms': 'All Rooms'}.get(booking.wedding_package, 'Wedding Package') }}</strong></p>
-                <p style="margin: 5px 0 0; color: var(--gray-500);">{{ 'Rs. 15,000/day' if booking.wedding_package == 'all_9_ac' else 'Rs. 17,000/day' }}</p>
+                {% set wp = booking.wedding_package %}
+                {% if wp == 'custom_ac' %}
+                <p style="margin: 0;"><strong>Custom AC ({{ booking.wedding_custom_rooms or 0 }} Rooms)</strong></p>
+                <p style="margin: 5px 0 0; color: var(--gray-500);">Rs. {{ (booking.room_charge / booking.stay_duration)|int }}/day (custom selection)</p>
+                {% else %}
+                <p style="margin: 0;"><strong>{{ {'all_9_ac': 'All 9 AC Rooms', 'all_rooms': 'All Rooms'}.get(wp, 'Wedding Package') }}</strong></p>
+                <p style="margin: 5px 0 0; color: var(--gray-500);">{{ 'Rs. 15,000/day' if wp == 'all_9_ac' else 'Rs. 17,000/day' }}</p>
+                {% endif %}
                 {% else %}
                 <p style="margin: 0;"><strong class="text-mono">{{ room.room_number if room else 'N/A' }}</strong></p>
                 <p style="margin: 5px 0 0; color: var(--gray-500);">{{ room.room_type|title if room else 'N/A' }} - Rs. {{ room.price_per_night|int if room else 0 }}/night</p>
@@ -84,7 +90,11 @@
                 <h4 style="margin: 0 0 15px;">Calculation Preview</h4>
                 <table style="width: 100%; font-size: 14px;">
                     {% if booking.booking_category == 'wedding' %}
+                    {% if booking.wedding_package == 'custom_ac' %}
+                    {% set package_rate = (booking.room_charge / booking.stay_duration)|int %}
+                    {% else %}
                     {% set package_rate = 15000 if booking.wedding_package == 'all_9_ac' else 17000 %}
+                    {% endif %}
                     <tr>
                         <td>Wedding Package ({{ booking.stay_duration }} nights)</td>
                         <td style="text-align: right;">Rs. {{ package_rate }} x {{ booking.stay_duration }}</td>
@@ -151,8 +161,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const roomPrice = {{ room.price_per_night|int if room else 0 }};
     const roomType = '{{ room.room_type if room else '' }}';
     
-    const weddingRates = {'all_9_ac': 15000, 'all_rooms': 17000};
-    const weddingNames = {'all_9_ac': 'All 9 AC Rooms', 'all_rooms': 'All Rooms'};
+    const weddingRates = {'all_9_ac': 15000, 'all_rooms': 17000, 'custom_ac': {{ ((booking.room_charge / booking.stay_duration)|int) if booking.stay_duration else 0 }}};
+    const weddingNames = {'all_9_ac': 'All 9 AC Rooms', 'all_rooms': 'All Rooms', 'custom_ac': 'Custom AC ({{ booking.wedding_custom_rooms or 0 }} Rooms)'};
     
     function calculateNights() {
         // Implement the same checkout-time based rule as server (12:00 PM boundary)

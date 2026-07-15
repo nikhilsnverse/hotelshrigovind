@@ -226,7 +226,12 @@
                     <p><strong>Booking ID:</strong> {{ booking.booking_id }}</p>
                     <p><strong>Purpose:</strong> {{ booking.purpose_of_visit or '-' }}</p>
                     {% if booking.booking_category == 'wedding' %}
-                    <p><strong>Wedding Package:</strong> {{ {'all_9_ac': 'All 9 AC Rooms', 'all_rooms': 'All Rooms'}.get(booking.wedding_package, booking.wedding_package) }}</p>
+                    {% set wp = booking.wedding_package %}
+                    {% if wp == 'custom_ac' %}
+                    <p><strong>Wedding Package:</strong> Custom AC ({{ booking.wedding_custom_rooms or 0 }} Rooms)</p>
+                    {% else %}
+                    <p><strong>Wedding Package:</strong> {{ {'all_9_ac': 'All 9 AC Rooms', 'all_rooms': 'All Rooms'}.get(wp, wp) }}</p>
+                    {% endif %}
                     {% else %}
                     <p><strong>Room:</strong> {{ room.room_number if room else 'N/A' }} ({{ room.room_type|title if room else 'N/A' }})</p>
                     {% endif %}
@@ -264,8 +269,13 @@
         </thead>
         <tbody>
             {% if booking.booking_category == 'wedding' %}
-            {% set package_name = {'all_9_ac': 'All 9 AC Rooms', 'all_rooms': 'All Rooms'}.get(booking.wedding_package, 'Wedding Package') %}
-            {% set package_rate = 15000 if booking.wedding_package == 'all_9_ac' else 17000 %}
+            {% if booking.wedding_package == 'custom_ac' %}
+                {% set package_name = 'Custom AC (' ~ (booking.wedding_custom_rooms or 0) ~ ' Rooms)' %}
+                {% set package_rate = (booking.room_charge / booking.stay_duration)|int if booking.stay_duration else 0 %}
+            {% else %}
+                {% set package_name = {'all_9_ac': 'All 9 AC Rooms', 'all_rooms': 'All Rooms'}.get(booking.wedding_package, 'Wedding Package') %}
+                {% set package_rate = 15000 if booking.wedding_package == 'all_9_ac' else 17000 %}
+            {% endif %}
             {% set amount = (package_rate * booking.stay_duration)|float %}
             {% set discount_amt = booking.discount|float %}
             {% set amount_after_discount = amount - discount_amt %}

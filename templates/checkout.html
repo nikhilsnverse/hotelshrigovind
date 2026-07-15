@@ -26,8 +26,14 @@
                     <div>
                         <h4 style="color: var(--gray-500); font-size: 12px; text-transform: uppercase; margin-bottom: 10px;">{% if booking.booking_category == 'wedding' %}Wedding Package{% else %}Room{% endif %}</h4>
                         {% if booking.booking_category == 'wedding' %}
-                        <p style="margin: 0;"><strong>{{ {'all_9_ac': 'All 9 AC Rooms', 'all_rooms': 'All Rooms'}.get(booking.wedding_package, 'Wedding Package') }}</strong></p>
-                        <p style="margin: 5px 0 0; color: var(--gray-500);">{{ 'Rs. 15,000/day' if booking.wedding_package == 'all_9_ac' else 'Rs. 17,000/day' }}</p>
+                        {% set wp = booking.wedding_package %}
+                        {% if wp == 'custom_ac' %}
+                        <p style="margin: 0;"><strong>Custom AC ({{ booking.wedding_custom_rooms or 0 }} Rooms)</strong></p>
+                        <p style="margin: 5px 0 0; color: var(--gray-500);">Rs. {{ (booking.room_charge / booking.stay_duration)|int if booking.stay_duration else 0 }}/day (custom selection)</p>
+                        {% else %}
+                        <p style="margin: 0;"><strong>{{ {'all_9_ac': 'All 9 AC Rooms', 'all_rooms': 'All Rooms'}.get(wp, 'Wedding Package') }}</strong></p>
+                        <p style="margin: 5px 0 0; color: var(--gray-500);">{{ 'Rs. 15,000/day' if wp == 'all_9_ac' else 'Rs. 17,000/day' }}</p>
+                        {% endif %}
                         {% else %}
                         <p style="margin: 0;"><strong class="text-mono">{{ room.room_number if room else 'N/A' }}</strong></p>
                         <p style="margin: 5px 0 0; color: var(--gray-500);">{{ room.room_type|title if room else 'N/A' }}</p>
@@ -403,7 +409,7 @@ function computeCheckoutPreview() {
     var roomPrice = {{ room.price_per_night if room else 0 }};
     var isWedding = {{ 'true' if booking.booking_category == 'wedding' else 'false' }};
     var weddingPackage = '{{ booking.wedding_package or "" }}';
-    var weddingRates = {'all_9_ac': 15000, 'all_rooms': 17000};
+    var weddingRates = {'all_9_ac': 15000, 'all_rooms': 17000, 'custom_ac': {{ (booking.room_charge / booking.stay_duration)|int if booking.stay_duration else 0 }}};
     var extraChargesStatic = parseFloat(document.getElementById('extra-charges-amount') ? document.getElementById('extra-charges-amount').textContent.replace(/,/g,'') : 0) || 0;
     var discount = parseFloat('{{ booking.discount or 0 }}') || 0;
     var advance = parseFloat('{{ booking.advance_amount or 0 }}') || 0;

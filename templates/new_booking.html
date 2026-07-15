@@ -197,6 +197,38 @@
                                         <span style="display: block; font-size: 12px; color: var(--gray-500);">All rooms (Standard + Deluxe + Suite) - Rs. 17,000 per day</span>
                                     </div>
                                 </label>
+                                <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 15px; border: 2px solid var(--gray-300); border-radius: 8px;" id="pkg_custom_ac_label">
+                                    <input type="radio" name="wedding_package" value="custom_ac" onchange="toggleWeddingPackage()">
+                                    <div>
+                                        <span style="font-weight: 600;">Custom Rooms</span>
+                                        <span style="display: block; font-size: 12px; color: var(--gray-500);">Select specific rooms - rate adjusts accordingly</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        <div id="custom-ac-rooms-section" style="display: none; margin-top: 15px;">
+                            <div class="form-group">
+                                <label class="form-label">Select Rooms *</label>
+                                <small style="color: var(--gray-500); display: block; margin-bottom: 8px;">Tick the rooms you want to allocate. Rate = sum of selected rooms' prices per night.</small>
+                                <div id="ac-rooms-list" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                                    {% for r in ac_rooms %}
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 12px; border: 2px solid var(--gray-200); border-radius: 8px; background: var(--gray-50);" class="ac-room-label" data-id="{{ r.id }}" data-price="{{ r.price_per_night }}">
+                                        <input type="checkbox" name="wedding_selected_rooms" value="{{ r.id }}" class="ac-room-checkbox" data-price="{{ r.price_per_night }}" onchange="calculateBillSummary()">
+                                        <div>
+                                            <span style="font-weight: 600;">{{ r.room_number }}</span>
+                                            <span style="display: block; font-size: 11px; color: var(--gray-500);">{{ r.room_type|title }}</span>
+                                        </div>
+                                        <span style="margin-left: auto; font-size: 13px; font-weight: 600; color: var(--primary);">Rs. {{ "%.0f"|format(r.price_per_night) }}</span>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                                <input type="hidden" name="wedding_custom_rooms" id="wedding_custom_rooms" value="0">
+                            </div>
+                            <div style="background: var(--info-light); padding: 12px; border-radius: 8px; margin-top: 10px;">
+                                <p style="margin: 0; font-size: 13px; color: var(--info);">
+                                    <i class="fas fa-calculator"></i>
+                                    <span id="custom-ac-rate-display">Select rooms above to see rate</span>
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -499,6 +531,28 @@ document.addEventListener('DOMContentLoaded', function() {
         showSummary(nights, pricePerNight, basePrice, totalBase, extraPersonCharge, extraPersons, gstAmount, gstMode, gstRate, totalAmount, null, null);
     }
     
+    function updateCustomAcVisual() {
+        const labels = document.querySelectorAll('.ac-room-label');
+        labels.forEach(label => {
+            const cb = label.querySelector('.ac-room-checkbox');
+            if (cb.checked) {
+                label.style.borderColor = 'var(--primary)';
+                label.style.background = '#eef2ff';
+            } else {
+                label.style.borderColor = 'var(--gray-200)';
+                label.style.background = 'var(--gray-50)';
+            }
+        });
+        // Update hidden count field
+        const checked = document.querySelectorAll('.ac-room-checkbox:checked');
+        document.getElementById('wedding_custom_rooms').value = checked.length;
+    }
+    
+    // Listen for checkbox changes to update visual
+    document.querySelectorAll('.ac-room-checkbox').forEach(cb => {
+        cb.addEventListener('change', updateCustomAcVisual);
+    });
+    
     function calculateWeddingSummary() {
         const weddingPackage = document.querySelector('input[name="wedding_package"]:checked')?.value;
         if (!weddingPackage) {
@@ -513,12 +567,33 @@ document.addEventListener('DOMContentLoaded', function() {
         
         let packageName = '';
         let packageRate = 0;
+        let customRooms = 0;
         if (weddingPackage === 'all_9_ac') {
             packageName = 'All 9 AC Rooms';
             packageRate = 15000;
-        } else {
+        } else if (weddingPackage === 'all_rooms') {
             packageName = 'All Rooms';
             packageRate = 17000;
+        } else if (weddingPackage === 'custom_ac') {
+            const checkedBoxes = document.querySelectorAll('.ac-room-checkbox:checked');
+            customRooms = checkedBoxes.length;
+            packageRate = 0;
+            let roomList = [];
+            checkedBoxes.forEach(cb => {
+                const price = parseFloat(cb.dataset.price);
+                packageRate += price;
+                roomList.push(cb.closest('.ac-room-label').querySelector('span:first-child').textContent.trim());
+            });
+            packageName = `Custom AC (${roomList.join(', ')})`;
+            // Update the rate display
+            const rateDisplay = document.getElementById('custom-ac-rate-display');
+            if (rateDisplay) {
+                if (customRooms > 0) {
+                    rateDisplay.innerHTML = `<b>${customRooms} room(s)</b> selected: ${roomList.join(', ')} = <b>Rs. ${packageRate.toLocaleString()}/day</b>`;
+                } else {
+                    rateDisplay.textContent = 'Select rooms above to see rate';
+                }
+            }
         }
         
         let nights = 1;
@@ -556,11 +631,28 @@ document.addEventListener('DOMContentLoaded', function() {
                     <table style="width: 100%;">`;
             
             if (isWedding) {
+                let extraRow = '';
+                if (weddingPackage === 'custom_ac') {
+                    const checkedBoxes = document.querySelectorAll('.ac-room-checkbox:checked');
+                    let roomList = [];
+                    checkedBoxes.forEach(cb => {
+                        roomList.push(cb.closest('.ac-room-label').querySelector('span:first-child').textContent.trim());
+                    });
+                    extraRow = `
+                        <tr>
+                            <td>Selected Rooms</td>
+                            <td style="text-align: right; font-weight: 600;">${roomList.join(', ') || 'None'}</td>
+                        </tr>
+                        <tr>
+                            <td>Number of Rooms</td>
+                            <td style="text-align: right; font-weight: 600;">${checkedBoxes.length}</td>
+                        </tr>`;
+                }
                 html += `
                         <tr>
                             <td>Wedding Package</td>
                             <td style="text-align: right; font-weight: 600;">${packageName}</td>
-                        </tr>
+                        </tr>${extraRow}
                         <tr>
                             <td>Number of Nights</td>
                             <td style="text-align: right; font-weight: 600;">${nights}</td>
@@ -752,19 +844,30 @@ document.addEventListener('DOMContentLoaded', function() {
     
     window.toggleWeddingPackage = function() {
         const isAll9Ac = document.querySelector('input[name="wedding_package"][value="all_9_ac"]')?.checked;
+        const isCustom = document.querySelector('input[name="wedding_package"][value="custom_ac"]')?.checked;
         const pkgAll9AcLabel = document.getElementById('pkg_all_9_ac_label');
         const pkgAllRoomsLabel = document.getElementById('pkg_all_rooms_label');
+        const pkgCustomAcLabel = document.getElementById('pkg_custom_ac_label');
+        const customAcSection = document.getElementById('custom-ac-rooms-section');
+        
+        pkgAll9AcLabel.style.borderColor = 'var(--gray-300)';
+        pkgAll9AcLabel.style.background = 'transparent';
+        pkgAllRoomsLabel.style.borderColor = 'var(--gray-300)';
+        pkgAllRoomsLabel.style.background = 'transparent';
+        pkgCustomAcLabel.style.borderColor = 'var(--gray-300)';
+        pkgCustomAcLabel.style.background = 'transparent';
+        customAcSection.style.display = 'none';
         
         if (isAll9Ac) {
             pkgAll9AcLabel.style.borderColor = 'var(--primary)';
             pkgAll9AcLabel.style.background = 'var(--gray-50)';
-            pkgAllRoomsLabel.style.borderColor = 'var(--gray-300)';
-            pkgAllRoomsLabel.style.background = 'transparent';
+        } else if (isCustom) {
+            pkgCustomAcLabel.style.borderColor = 'var(--primary)';
+            pkgCustomAcLabel.style.background = 'var(--gray-50)';
+            customAcSection.style.display = 'block';
         } else {
             pkgAllRoomsLabel.style.borderColor = 'var(--primary)';
             pkgAllRoomsLabel.style.background = 'var(--gray-50)';
-            pkgAll9AcLabel.style.borderColor = 'var(--gray-300)';
-            pkgAll9AcLabel.style.background = 'transparent';
         }
         calculateBillSummary();
     };
@@ -773,6 +876,11 @@ document.addEventListener('DOMContentLoaded', function() {
         radio.addEventListener('change', function() {
             calculateBillSummary();
         });
+    });
+    
+    document.getElementById('wedding_custom_rooms')?.addEventListener('input', function() {
+        const isCustom = document.querySelector('input[name="wedding_package"][value="custom_ac"]')?.checked;
+        if (isCustom) calculateBillSummary();
     });
 });
 
@@ -791,6 +899,13 @@ function validateForm() {
         if (!weddingPackage) {
             alert('Please select a wedding package');
             return false;
+        }
+        if (weddingPackage === 'custom_ac') {
+            const checkedRooms = document.querySelectorAll('.ac-room-checkbox:checked');
+            if (checkedRooms.length === 0) {
+                alert('Please select at least one AC room');
+                return false;
+            }
         }
     } else {
         const roomId = document.querySelector('[name="room_id"]')?.value;

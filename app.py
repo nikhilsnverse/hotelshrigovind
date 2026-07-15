@@ -195,6 +195,8 @@ class Booking(db.Model):
     room_id = db.Column(db.Integer, db.ForeignKey('rooms.id'), nullable=True)
     booking_category = db.Column(db.String(20), default='normal')
     wedding_package = db.Column(db.String(20), nullable=True)
+    wedding_custom_rooms = db.Column(db.Integer, nullable=True)
+    wedding_selected_rooms = db.Column(db.Text, nullable=True)
     check_in = db.Column(db.DateTime, nullable=False)
     check_out = db.Column(db.DateTime, nullable=False)
     actual_check_in = db.Column(db.DateTime)
@@ -409,7 +411,15 @@ def calculate_bill(booking):
     try:
         if booking.booking_category == 'wedding':
             wedding_rates = {'all_9_ac': Decimal('15000'), 'all_rooms': Decimal('17000')}
-            package_rate = wedding_rates.get(booking.wedding_package, Decimal('15000'))
+            if booking.wedding_package == 'custom_ac':
+                if booking.wedding_selected_rooms:
+                    selected_ids = [int(x) for x in booking.wedding_selected_rooms.split(',') if x]
+                    selected_rooms = Room.query.filter(Room.id.in_(selected_ids)).all()
+                    package_rate = sum(Decimal(str(r.price_per_night)) for r in selected_rooms)
+                else:
+                    package_rate = Decimal('15000')
+            else:
+                package_rate = wedding_rates.get(booking.wedding_package, Decimal('15000'))
             base_room_charge = package_rate * (booking.stay_duration or 1)
         else:
             room = db.session.get(Room, booking.room_id)
@@ -713,7 +723,17 @@ def create_pdf_invoice(invoice, booking, customer, room):
     if booking.purpose_of_visit:
         booking_lines.append(P(f'<b>Purpose:</b> {booking.purpose_of_visit}', fs=10))
     if booking.booking_category == 'wedding':
-        pkg_name = {'all_9_ac': 'All 9 AC Rooms', 'all_rooms': 'All Rooms'}.get(booking.wedding_package, 'Wedding Package')
+        wedding_pkg_names = {'all_9_ac': 'All 9 AC Rooms', 'all_rooms': 'All Rooms'}
+        if booking.wedding_package == 'custom_ac':
+            if booking.wedding_selected_rooms:
+                selected_ids = [int(x) for x in booking.wedding_selected_rooms.split(',') if x]
+                selected_rooms = Room.query.filter(Room.id.in_(selected_ids)).all()
+                room_nums = ', '.join(r.room_number for r in selected_rooms)
+                pkg_name = f'Custom AC ({room_nums})'
+            else:
+                pkg_name = 'Custom AC'
+        else:
+            pkg_name = wedding_pkg_names.get(booking.wedding_package, 'Wedding Package')
         booking_lines.append(P(f'<b>Package:</b> {pkg_name}', fs=10))
     else:
         rt = room.room_number + ' (' + room.room_type.title() + ')' if room else 'N/A'
@@ -752,9 +772,20 @@ def create_pdf_invoice(invoice, booking, customer, room):
     idx = 1
     # Room / Wedding row
     if booking.booking_category == 'wedding':
-        wedding_rates = {'all_9_ac': 15000, 'all_rooms': 17000}
-        room_rate = wedding_rates.get(booking.wedding_package, 15000)
-        desc = f'Wedding Package ({ {"all_9_ac": "All 9 AC Rooms", "all_rooms": "All Rooms"}.get(booking.wedding_package, "Wedding Package") })'
+        if booking.wedding_package == 'custom_ac':
+            if booking.wedding_selected_rooms:
+                selected_ids = [int(x) for x in booking.wedding_selected_rooms.split(',') if x]
+                selected_rooms = Room.query.filter(Room.id.in_(selected_ids)).all()
+                room_rate = float(sum(Decimal(str(r.price_per_night)) for r in selected_rooms))
+                room_nums = ', '.join(r.room_number for r in selected_rooms)
+                desc = f'Wedding Package (Custom AC - {room_nums})'
+            else:
+                room_rate = 15000
+                desc = 'Wedding Package (Custom AC)'
+        else:
+            wedding_rates = {'all_9_ac': 15000, 'all_rooms': 17000}
+            room_rate = wedding_rates.get(booking.wedding_package, 15000)
+            desc = f'Wedding Package ({ {"all_9_ac": "All 9 AC Rooms", "all_rooms": "All Rooms"}.get(booking.wedding_package, "Wedding Package") })'
         amount = float(room_rate * booking.stay_duration)
     else:
         room_rate = float(room.price_per_night) if room else 0.0
@@ -1358,6 +1389,9 @@ def new_booking():
     
     form.room_id.choices = [(r.id, f'{r.room_number} - {r.room_type.title()} (Rs. {float(r.price_per_night):.0f}/night)') for r in available_rooms]
     
+    # All AC rooms (deluxe + suite) for custom wedding selection
+    ac_rooms = Room.query.order_by(Room.room_number).all()
+    
     if request.method == 'GET':
         form.check_in.data = datetime.now().strftime('%Y-%m-%d')
         form.check_out.data = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
@@ -1370,21 +1404,21 @@ def new_booking():
         
         if not customer_id or customer_id == '0' or customer_id == '':
             flash('Please select a customer first', 'danger')
-            return render_template('new_booking.html', form=form, customers=customers)
+            return render_template('new_booking.html', form=form, customers=customers, ac_rooms=ac_rooms)
         
         booking_category = request.form.get('booking_category', 'normal')
         wedding_package = request.form.get('wedding_package', '') if booking_category == 'wedding' else None
         
         if booking_category == 'wedding':
             room_id = None
-            if wedding_package not in ['all_9_ac', 'all_rooms']:
+            if wedding_package not in ['all_9_ac', 'all_rooms', 'custom_ac']:
                 flash('Please select a wedding package', 'danger')
-                return render_template('new_booking.html', form=form, customers=customers)
+                return render_template('new_booking.html', form=form, customers=customers, ac_rooms=ac_rooms)
         else:
             room_id = form.room_id.data
             if not room_id:
                 flash('Please select a room', 'danger')
-                return render_template('new_booking.html', form=form, customers=customers)
+                return render_template('new_booking.html', form=form, customers=customers, ac_rooms=ac_rooms)
         
         check_in_date = datetime.strptime(form.check_in.data, '%Y-%m-%d')
         if form.check_out.data:
@@ -1428,20 +1462,33 @@ def new_booking():
 
         if stay_duration < 1:
             flash('Check-out date must be after check-in date', 'danger')
-            return render_template('new_booking.html', form=form, customers=customers)
+            return render_template('new_booking.html', form=form, customers=customers, ac_rooms=ac_rooms)
         
         room = None
         if booking_category == 'wedding':
-            wedding_rates = {'all_9_ac': Decimal('15000'), 'all_rooms': Decimal('17000')}
-            package_rate = wedding_rates.get(wedding_package, Decimal('15000'))
+            if wedding_package == 'custom_ac':
+                selected_room_ids = request.form.getlist('wedding_selected_rooms')
+                selected_room_ids = [int(x) for x in selected_room_ids if x]
+                selected_rooms = Room.query.filter(Room.id.in_(selected_room_ids)).all() if selected_room_ids else []
+                total_room_rate = sum(Decimal(str(r.price_per_night)) for r in selected_rooms)
+                package_rate = total_room_rate
+                custom_rooms = len(selected_room_ids)
+                wedding_selected_rooms_str = ','.join(str(x) for x in selected_room_ids)
+            else:
+                wedding_rates = {'all_9_ac': Decimal('15000'), 'all_rooms': Decimal('17000')}
+                package_rate = wedding_rates.get(wedding_package, Decimal('15000'))
+                custom_rooms = None
+                wedding_selected_rooms_str = None
             base_room_charge = package_rate * stay_duration
             extra_person_charge = 0
             number_of_persons = int(request.form.get('number_of_persons', 1))
         else:
+            custom_rooms = None
+            wedding_selected_rooms_str = None
             room = db.session.get(Room, room_id)
             if not room or room.status not in ['available', 'cleaning']:
                 flash('Selected room is not available', 'danger')
-                return render_template('new_booking.html', form=form, customers=customers)
+                return render_template('new_booking.html', form=form, customers=customers, ac_rooms=ac_rooms)
             number_of_persons = int(request.form.get('number_of_persons', 1))
             extra_person_charge, extra_persons = calculate_extra_person_charge(room.room_type, number_of_persons, stay_duration)
             base_room_charge = Decimal(str((room.price_per_night or 0) * stay_duration))
@@ -1474,6 +1521,8 @@ def new_booking():
             room_id=room_id if booking_category == 'normal' else None,
             booking_category=booking_category,
             wedding_package=wedding_package,
+            wedding_custom_rooms=custom_rooms,
+            wedding_selected_rooms=wedding_selected_rooms_str,
             check_in=check_in,
             check_out=check_out,
             actual_check_in=actual_check_in,
@@ -1536,11 +1585,17 @@ def new_booking():
         db.session.add(booking)
         db.session.commit()
         
-        log_activity('New Booking', f'Booking {booking.booking_id} created for room {room.room_number if room else "Wedding - " + wedding_package}')
+        pkg_info = wedding_package
+        if wedding_package == 'custom_ac' and wedding_selected_rooms_str:
+            selected_ids = [int(x) for x in wedding_selected_rooms_str.split(',') if x]
+            selected_rooms_info = Room.query.filter(Room.id.in_(selected_ids)).all()
+            room_nums = ', '.join(r.room_number for r in selected_rooms_info)
+            pkg_info += f' ({room_nums})'
+        log_activity('New Booking', f'Booking {booking.booking_id} created for room {room.room_number if room else "Wedding - " + pkg_info}')
         flash(f'Check-in successful! Booking ID: {booking.booking_id}', 'success')
         return redirect(url_for('bookings'))
     
-    return render_template('new_booking.html', form=form, customers=customers)
+    return render_template('new_booking.html', form=form, customers=customers, ac_rooms=ac_rooms)
 
 @app.route('/bookings/<int:booking_id>')
 @login_required
@@ -1842,8 +1897,16 @@ def edit_booking(booking_id):
             booking.purpose_of_visit = purpose_of_visit
             
             if booking.booking_category == 'wedding':
-                wedding_rates = {'all_9_ac': Decimal('15000'), 'all_rooms': Decimal('17000')}
-                package_rate = wedding_rates.get(booking.wedding_package, Decimal('15000'))
+                if booking.wedding_package == 'custom_ac':
+                    if booking.wedding_selected_rooms:
+                        selected_ids = [int(x) for x in booking.wedding_selected_rooms.split(',') if x]
+                        selected_rooms = Room.query.filter(Room.id.in_(selected_ids)).all()
+                        package_rate = sum(Decimal(str(r.price_per_night)) for r in selected_rooms)
+                    else:
+                        package_rate = Decimal('15000')
+                else:
+                    wedding_rates = {'all_9_ac': Decimal('15000'), 'all_rooms': Decimal('17000')}
+                    package_rate = wedding_rates.get(booking.wedding_package, Decimal('15000'))
                 base_room_charge = package_rate * stay_duration
                 extra_person_charge = 0
             else:
@@ -2739,6 +2802,8 @@ def migrate_database():
             ('purpose_of_visit', "ALTER TABLE bookings ADD COLUMN purpose_of_visit VARCHAR(50)"),
             ('booking_category', "ALTER TABLE bookings ADD COLUMN booking_category VARCHAR(20) DEFAULT 'normal'"),
             ('wedding_package', "ALTER TABLE bookings ADD COLUMN wedding_package VARCHAR(20)"),
+            ('wedding_custom_rooms', "ALTER TABLE bookings ADD COLUMN wedding_custom_rooms INTEGER"),
+            ('wedding_selected_rooms', "ALTER TABLE bookings ADD COLUMN wedding_selected_rooms TEXT"),
             ('billing_mode', "ALTER TABLE bookings ADD COLUMN billing_mode VARCHAR(20) DEFAULT '12_hours'"),
         ]
         

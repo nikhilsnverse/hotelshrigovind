@@ -61,12 +61,15 @@
                 <h4 style="margin-bottom: 15px;">{% if booking.booking_category == 'wedding' %}Wedding Package{% else %}Room Information{% endif %}</h4>
                 <div style="background: var(--gray-50); padding: 15px; border-radius: 8px;">
                     {% if booking.booking_category == 'wedding' %}
+                    {% set wp = booking.wedding_package %}
                     <div>
                         <p style="margin: 0;"><strong style="font-size: 20px; color: var(--primary);">
-                            {% if booking.wedding_package == 'all_9_ac' %}All 9 AC Rooms{% else %}All Rooms{% endif %}
+                            {% if wp == 'custom_ac' %}Custom AC ({{ booking.wedding_custom_rooms or 0 }} Rooms)
+                    {% elif wp == 'all_9_ac' %}All 9 AC Rooms{% else %}All Rooms{% endif %}
                         </strong></p>
                         <p style="margin: 5px 0 0; color: var(--gray-500);">
-                            {% if booking.wedding_package == 'all_9_ac' %}Rs. 15,000 per day (All AC Rooms){% else %}Rs. 17,000 per day (All Rooms){% endif %}
+                            {% if wp == 'custom_ac' %}Rs. {{ (booking.room_charge / booking.stay_duration)|int if booking.stay_duration else 0 }} per day ({{ booking.wedding_custom_rooms or 0 }} selected rooms)
+                            {% elif wp == 'all_9_ac' %}Rs. 15,000 per day (All AC Rooms){% else %}Rs. 17,000 per day (All Rooms){% endif %}
                         </p>
                     </div>
                     {% elif booking.room %}
