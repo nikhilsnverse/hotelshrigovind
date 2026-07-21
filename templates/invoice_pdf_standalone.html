@@ -177,7 +177,7 @@
         {% if booking.booking_category == 'wedding' %}
             {% if booking.wedding_package == 'custom_ac' %}
                 {% set package_name = 'Custom AC (' ~ (booking.wedding_custom_rooms or 0) ~ ' Rooms)' %}
-                {% set package_rate = (booking.room_charge / booking.stay_duration)|int if booking.stay_duration else 0 %}
+                {% set package_rate = (booking.room_charge / booking.stay_duration)|round if booking.stay_duration else 0 %}
             {% else %}
                 {% set package_name = {'all_9_ac': 'All 9 AC Rooms', 'all_rooms': 'All Rooms'}.get(booking.wedding_package, 'Wedding Package') %}
                 {% set package_rate = 15000 if booking.wedding_package == 'all_9_ac' else 17000 %}

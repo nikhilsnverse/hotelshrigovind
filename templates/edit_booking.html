@@ -28,7 +28,7 @@
                 {% set wp = booking.wedding_package %}
                 {% if wp == 'custom_ac' %}
                 <p style="margin: 0;"><strong>Custom AC ({{ booking.wedding_custom_rooms or 0 }} Rooms)</strong></p>
-                <p style="margin: 5px 0 0; color: var(--gray-500);">Rs. {{ (booking.room_charge / booking.stay_duration)|int }}/day (custom selection)</p>
+                <p style="margin: 5px 0 0; color: var(--gray-500);">Rs. {{ (booking.room_charge / booking.stay_duration)|round }}/day (custom selection)</p>
                 {% else %}
                 <p style="margin: 0;"><strong>{{ {'all_9_ac': 'All 9 AC Rooms', 'all_rooms': 'All Rooms'}.get(wp, 'Wedding Package') }}</strong></p>
                 <p style="margin: 5px 0 0; color: var(--gray-500);">{{ 'Rs. 15,000/day' if wp == 'all_9_ac' else 'Rs. 17,000/day' }}</p>
@@ -91,20 +91,20 @@
                 <table style="width: 100%; font-size: 14px;">
                     {% if booking.booking_category == 'wedding' %}
                     {% if booking.wedding_package == 'custom_ac' %}
-                    {% set package_rate = (booking.room_charge / booking.stay_duration)|int %}
+                    {% set package_rate = (booking.room_charge / booking.stay_duration)|round %}
                     {% else %}
                     {% set package_rate = 15000 if booking.wedding_package == 'all_9_ac' else 17000 %}
                     {% endif %}
                     <tr>
                         <td>Wedding Package ({{ booking.stay_duration }} nights)</td>
                         <td style="text-align: right;">Rs. {{ package_rate }} x {{ booking.stay_duration }}</td>
-                        <td style="text-align: right;">Rs. {{ (package_rate * booking.stay_duration)|int }}</td>
+                        <td style="text-align: right;">Rs. {{ (package_rate * booking.stay_duration)|round }}</td>
                     </tr>
                     <tr style="border-top: 1px solid var(--gray-300);">
                         <td style="padding-top: 10px;"><strong>New Total</strong></td>
                         <td></td>
                         <td style="text-align: right; font-weight: 700; color: var(--primary);">
-                            Rs. {{ (package_rate * booking.stay_duration)|int }}
+                            Rs. {{ (package_rate * booking.stay_duration)|round }}
                         </td>
                     </tr>
                     {% else %}
@@ -161,7 +161,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const roomPrice = {{ room.price_per_night|int if room else 0 }};
     const roomType = '{{ room.room_type if room else '' }}';
     
-    const weddingRates = {'all_9_ac': 15000, 'all_rooms': 17000, 'custom_ac': {{ ((booking.room_charge / booking.stay_duration)|int) if booking.stay_duration else 0 }}};
+    const weddingRates = {'all_9_ac': 15000, 'all_rooms': 17000, 'custom_ac': {{ ((booking.room_charge / booking.stay_duration)|round) if booking.stay_duration else 0 }}};
     const weddingNames = {'all_9_ac': 'All 9 AC Rooms', 'all_rooms': 'All Rooms', 'custom_ac': 'Custom AC ({{ booking.wedding_custom_rooms or 0 }} Rooms)'};
     
     function calculateNights() {

@@ -410,17 +410,21 @@ def round_off_amount(value):
 def calculate_bill(booking):
     try:
         if booking.booking_category == 'wedding':
-            wedding_rates = {'all_9_ac': Decimal('15000'), 'all_rooms': Decimal('17000')}
             if booking.wedding_package == 'custom_ac':
-                if booking.wedding_selected_rooms:
+                if booking.room_charge and booking.room_charge > 0:
+                    base_room_charge = booking.room_charge
+                elif booking.wedding_selected_rooms:
                     selected_ids = [int(x) for x in booking.wedding_selected_rooms.split(',') if x]
                     selected_rooms = Room.query.filter(Room.id.in_(selected_ids)).all()
                     package_rate = sum(Decimal(str(r.price_per_night)) for r in selected_rooms)
+                    base_room_charge = package_rate * (booking.stay_duration or 1)
                 else:
                     package_rate = Decimal('15000')
+                    base_room_charge = package_rate * (booking.stay_duration or 1)
             else:
+                wedding_rates = {'all_9_ac': Decimal('15000'), 'all_rooms': Decimal('17000')}
                 package_rate = wedding_rates.get(booking.wedding_package, Decimal('15000'))
-            base_room_charge = package_rate * (booking.stay_duration or 1)
+                base_room_charge = package_rate * (booking.stay_duration or 1)
         else:
             room = db.session.get(Room, booking.room_id)
             if not room:
@@ -1437,6 +1441,9 @@ def new_booking():
                 selected_room_ids = request.form.getlist('wedding_selected_rooms')
                 selected_room_ids = [int(x) for x in selected_room_ids if x]
                 selected_rooms = Room.query.filter(Room.id.in_(selected_room_ids)).all() if selected_room_ids else []
+                if not selected_rooms:
+                    flash('Please select at least one room for custom wedding package', 'danger')
+                    return render_template('new_booking.html', form=form, customers=customers, ac_rooms=ac_rooms)
                 total_room_rate = sum(Decimal(str(r.price_per_night)) for r in selected_rooms)
                 package_rate = total_room_rate
                 custom_rooms = len(selected_room_ids)
@@ -1539,6 +1546,9 @@ def new_booking():
         
         if room:
             room.status = 'occupied'
+        elif booking_category == 'wedding' and wedding_package == 'custom_ac' and wedding_selected_rooms_str:
+            selected_ids = [int(x) for x in wedding_selected_rooms_str.split(',') if x]
+            Room.query.filter(Room.id.in_(selected_ids)).update({'status': 'occupied'}, synchronize_session=False)
         
         customer_obj.total_stays += 1
         
@@ -1739,6 +1749,9 @@ def checkout(booking_id):
         try:
             if room:
                 room.status = 'cleaning'
+            elif booking.booking_category == 'wedding' and booking.wedding_package == 'custom_ac' and booking.wedding_selected_rooms:
+                selected_ids = [int(x) for x in booking.wedding_selected_rooms.split(',') if x]
+                Room.query.filter(Room.id.in_(selected_ids)).update({'status': 'cleaning'}, synchronize_session=False)
         except:
             pass
         
