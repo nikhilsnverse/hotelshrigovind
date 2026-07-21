@@ -786,14 +786,15 @@ def create_pdf_invoice(invoice, booking, customer, room):
             wedding_rates = {'all_9_ac': 15000, 'all_rooms': 17000}
             room_rate = wedding_rates.get(booking.wedding_package, 15000)
             desc = f'Wedding Package ({ {"all_9_ac": "All 9 AC Rooms", "all_rooms": "All Rooms"}.get(booking.wedding_package, "Wedding Package") })'
-        amount = float(room_rate * booking.stay_duration)
+            amount = float(room_rate)
     else:
         room_rate = float(room.price_per_night) if room else 0.0
         desc = f'Room Charge ({room.room_number if room else "N/A"})'
-        amount = float(room_rate * booking.stay_duration)
+        amount = float(room_rate)
 
     discount_amt = float(booking.discount or 0)
-    amount_after_discount = amount - discount_amt
+    base_total = amount * float(booking.stay_duration)
+    amount_after_discount = base_total - discount_amt
 
     if booking.gst_mode == 'include' and gst > 0:
         taxable = (amount_after_discount * 100) / (100 + gst)
@@ -808,40 +809,6 @@ def create_pdf_invoice(invoice, booking, customer, room):
     discount_str = f'- Rs. {discount_amt:,.2f}' if discount_amt > 0 else '-'
     items_data.append([P(str(idx)), P(f'<b>{desc}</b>'), P(str(booking.stay_duration), a=TA_CENTER), P(f'Rs. {amount:,.2f}', a=TA_RIGHT), P(discount_str, a=TA_RIGHT), P(f'Rs. {taxable:,.2f}', a=TA_RIGHT), P(f'Rs. {total:,.2f}', a=TA_RIGHT)])
     idx += 1
-
-    # Extra person charges
-    if float(booking.extra_person_charges or 0) > 0:
-        amount = float(booking.extra_person_charges)
-        if booking.gst_mode == 'include' and gst > 0:
-            taxable = (amount * 100) / (100 + gst)
-            total = amount
-        elif booking.gst_mode == 'exclude' and gst > 0:
-            taxable = amount
-            total = amount + (amount * gst / 100)
-        else:
-            taxable = amount
-            total = amount
-
-        items_data.append([P(str(idx)), P('<b>Extra Person Charges</b>'), P('-', a=TA_CENTER), P(f'Rs. {amount:,.2f}', a=TA_RIGHT), P('-', a=TA_RIGHT), P(f'Rs. {taxable:,.2f}', a=TA_RIGHT), P(f'Rs. {total:,.2f}', a=TA_RIGHT)])
-        idx += 1
-
-    # Other extra charges
-    for ec in booking.extra_charges_list:
-        desc = ec.description if ec.description else ec.charge_type.replace('_', ' ').title()
-        amount = float(ec.amount)
-        qty = int(ec.quantity or 1)
-        if booking.gst_mode == 'include' and gst > 0:
-            taxable = (amount * 100) / (100 + gst)
-            total = amount
-        elif booking.gst_mode == 'exclude' and gst > 0:
-            taxable = amount
-            total = amount + (amount * gst / 100)
-        else:
-            taxable = amount
-            total = amount
-
-        items_data.append([P(str(idx)), P(desc), P(str(qty), a=TA_CENTER), P(f'Rs. {amount:,.2f}', a=TA_RIGHT), P('-', a=TA_RIGHT), P(f'Rs. {taxable:,.2f}', a=TA_RIGHT), P(f'Rs. {total:,.2f}', a=TA_RIGHT)])
-        idx += 1
 
     # Column widths scaled to match HTML invoice proportions and fit within page
     # S.No: 28, Description: 200, Nights: 45, Amount: 70, Discount: 70, Taxable: 70, Total: 80

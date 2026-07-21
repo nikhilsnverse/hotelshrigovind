@@ -258,9 +258,10 @@
                     <td style="text-align:right">Rs. {{ "%.2f"|format(total) }}</td>
                 </tr>
             {% else %}
-                {% set amount = (room.price_per_night|float * booking.stay_duration)|float %}
+                {% set amount = room.price_per_night|float %}
+                {% set base_total = (amount * booking.stay_duration)|float %}
                 {% set discount_amt = booking.discount|float %}
-                {% set amount_after_discount = amount - discount_amt %}
+                {% set amount_after_discount = base_total - discount_amt %}
                 {% set row_idx = row_idx + 1 %}
                 {% if booking.gst_mode == 'include' %}
                     {% set taxable = (amount_after_discount * 100) / (100 + gst) %}
@@ -282,55 +283,6 @@
                     <td style="text-align:right">Rs. {{ "%.2f"|format(total) }}</td>
                 </tr>
             {% endif %}
-
-            {% if booking.extra_person_charges and booking.extra_person_charges > 0 %}
-                {% set amount = booking.extra_person_charges|float %}
-                {% set row_idx = row_idx + 1 %}
-                {% if booking.gst_mode == 'include' %}
-                    {% set taxable = (amount * 100) / (100 + gst) %}
-                    {% set total = amount %}
-                {% elif booking.gst_mode == 'exclude' %}
-                    {% set taxable = amount %}
-                    {% set total = amount + (amount * gst / 100) %}
-                {% else %}
-                    {% set taxable = amount %}
-                    {% set total = amount %}
-                {% endif %}
-                <tr>
-                    <td>{{ row_idx }}</td>
-                    <td><strong>Extra Person Charges</strong></td>
-                    <td style="text-align:center">-</td>
-                    <td style="text-align:right">Rs. {{ "%.2f"|format(amount) }}</td>
-                    <td style="text-align:right">-</td>
-                    <td style="text-align:right">Rs. {{ "%.2f"|format(taxable) }}</td>
-                    <td style="text-align:right">Rs. {{ "%.2f"|format(total) }}</td>
-                </tr>
-            {% endif %}
-
-            {% for ec in booking.extra_charges_list %}
-                {% set amount = ec.amount|float %}
-                {% set qty = ec.quantity or 1 %}
-                {% set row_idx = row_idx + 1 %}
-                {% if booking.gst_mode == 'include' %}
-                    {% set taxable = (amount * 100) / (100 + gst) %}
-                    {% set total = amount %}
-                {% elif booking.gst_mode == 'exclude' %}
-                    {% set taxable = amount %}
-                    {% set total = amount + (amount * gst / 100) %}
-                {% else %}
-                    {% set taxable = amount %}
-                    {% set total = amount %}
-                {% endif %}
-                <tr>
-                    <td>{{ row_idx }}</td>
-                    <td>{{ ec.description if ec.description else ec.charge_type|replace('_', ' ')|title }}</td>
-                    <td style="text-align:center">{{ qty }}</td>
-                    <td style="text-align:right">Rs. {{ "%.2f"|format(amount) }}</td>
-                    <td style="text-align:right">-</td>
-                    <td style="text-align:right">Rs. {{ "%.2f"|format(taxable) }}</td>
-                    <td style="text-align:right">Rs. {{ "%.2f"|format(total) }}</td>
-                </tr>
-            {% endfor %}
         </tbody>
     </table>
     
