@@ -31,26 +31,28 @@ class TestRoundOffAmount(unittest.TestCase):
 
 
 class TestBookingRoundOffProperty(unittest.TestCase):
-    def _make_booking(self, total, subtotal, gst_amount, gst_mode):
+    def _make_booking(self, total, subtotal, gst_amount, gst_mode, round_off=None):
         b = Booking()
         b.total_amount = Decimal(str(total))
         b.subtotal = Decimal(str(subtotal))
         b.gst_amount = Decimal(str(gst_amount))
         b.gst_mode = gst_mode
+        if round_off is not None:
+            b.round_off = Decimal(str(round_off))
         return b
 
     def test_exclude_mode_round_off(self):
         # subtotal 1000 + gst 50.5 = 1050.5 -> rounded 1051 => round_off +0.5
-        b = self._make_booking(total='1051', subtotal='1000', gst_amount='50.5', gst_mode='exclude')
+        b = self._make_booking(total='1051', subtotal='1000', gst_amount='50.5', gst_mode='exclude', round_off='0.5')
         self.assertEqual(b.round_off, Decimal('0.5'))
 
     def test_include_mode_round_off(self):
         # include: pre-total = subtotal = 1050.5 -> rounded 1050 => round_off -0.5
-        b = self._make_booking(total='1050', subtotal='1050.5', gst_amount='50', gst_mode='include')
+        b = self._make_booking(total='1050', subtotal='1050.5', gst_amount='50', gst_mode='include', round_off='-0.5')
         self.assertEqual(b.round_off, Decimal('-0.5'))
 
     def test_no_round_off_when_already_whole(self):
-        b = self._make_booking(total='1050', subtotal='1000', gst_amount='50', gst_mode='exclude')
+        b = self._make_booking(total='1050', subtotal='1000', gst_amount='50', gst_mode='exclude', round_off='0')
         self.assertEqual(b.round_off, Decimal('0'))
 
 

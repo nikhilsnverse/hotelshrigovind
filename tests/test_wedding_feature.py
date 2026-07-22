@@ -14,8 +14,25 @@ class TestWeddingFeature(unittest.TestCase):
         self.app_ctx = app.app_context()
         self.app_ctx.push()
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+        app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'pool_pre_ping': True,
+        }
+        
+        if 'sqlalchemy' in app.extensions:
+            try:
+                app.extensions['sqlalchemy'].engine.dispose()
+            except Exception:
+                pass
+            del app.extensions['sqlalchemy']
+        
+        db._engine = None
+        db._session_factory = None
+        db.init_app(app)
+        
         db.drop_all()
         db.create_all()
+        db.session.commit()
 
         self.customer = Customer(
             name='Test Guest',
@@ -51,7 +68,11 @@ class TestWeddingFeature(unittest.TestCase):
 
     def tearDown(self):
         db.session.remove()
-        db.drop_all()
+        if hasattr(db, 'engine') and db.engine:
+            try:
+                db.engine.dispose()
+            except Exception:
+                pass
         self.app_ctx.pop()
 
     def _make_wedding_booking(self, package, stay_duration=1, gst_mode='exclude', gst_rate=5,

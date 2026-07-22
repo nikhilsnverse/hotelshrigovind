@@ -56,14 +56,6 @@ class TestCalculateNights(unittest.TestCase):
         co = datetime(2026, 2, 1, 13, 0)
         self.assertEqual(calculate_nights(ci, co), 2)
 
-    def test_12_hour_billing_mode_counts_each_12_hour_block(self):
-        ci = datetime(2026, 7, 10, 10, 0)
-        co = datetime(2026, 7, 10, 22, 0)
-        self.assertEqual(calculate_nights(ci, co, billing_mode='12_hours'), 1)
-
-        co = datetime(2026, 7, 11, 10, 0)
-        self.assertEqual(calculate_nights(ci, co, billing_mode='12_hours'), 2)
-
     def test_24_hour_billing_mode_counts_each_24_hour_block(self):
         ci = datetime(2026, 7, 10, 10, 0)
         co = datetime(2026, 7, 11, 10, 0)

@@ -102,7 +102,7 @@
                 <h1><strong>INVOICE</strong></h1>
                 <div class="invoice-meta">
                     <p><strong>{{ invoice.invoice_number }}</strong></p>
-                    <p><strong>Date: {{ invoice.generated_at.strftime('%d %b %Y, %I:%M %p') }}</strong></p>
+                    <p><strong>Date: {{ invoice.generated_at.strftime('%d %b %Y') }}</strong></p>
                 </div>
             </div>
             <img src="{{ url_for('static', filename='real_scanner.jpeg', _external=True) }}" alt="QR Code" style="max-height: 80px; max-width: 80px;">
@@ -165,15 +165,13 @@
         {% set gst = booking.gst_rate|float or 0.0 %}
         {% set row_idx = 0 %}
         <tbody>
-        <tr>
-            <th style="width:36px;"><strong>S.No</strong></th>
-            <th><strong>Description</strong></th>
-            <th style="width:60px;" class="center"><strong>Nights</strong></th>
-            <th style="width:90px;" class="amount"><strong>Amount</strong></th>
-            <th style="width:100px;" class="amount"><strong>Discount</strong></th>
-            <th style="width:100px;" class="amount"><strong>Taxable</strong></th>
-            <th style="width:110px;" class="amount"><strong>Total</strong></th>
-        </tr>
+            <tr>
+                <th><strong>Description</strong></th>
+                <th style="width:60px;" class="center"><strong>Nights</strong></th>
+                <th style="width:120px;" class="amount"><strong>Amount</strong></th>
+                <th style="width:110px;" class="amount"><strong>Discount</strong></th>
+                <th style="width:120px;" class="amount"><strong>Total</strong></th>
+            </tr>
         {% if booking.booking_category == 'wedding' %}
             {% if booking.wedding_package == 'custom_ac' %}
                 {% set package_name = 'Custom AC (' ~ (booking.wedding_custom_rooms or 0) ~ ' Rooms)' %}

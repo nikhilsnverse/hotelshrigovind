@@ -37,7 +37,7 @@
                         {% endif %}
                         <p><strong>Check-out:</strong> {{ booking.check_out.strftime('%d %b %Y, %I:%M %p') }}</p>
                         <p><strong>Duration:</strong> {{ booking.stay_duration }} night(s)</p>
-                        <p><strong>Billing Rule:</strong> {{ '12 Hours = 1 Night' if booking.billing_mode == '12_hours' or not booking.billing_mode else '24 Hours = 1 Night' }}</p>
+                        <p><strong>Billing Rule:</strong> {{ 'Hotel Rule (12 PM Cutoff)' if not booking.billing_mode or booking.billing_mode == 'default' else '24 Hours = 1 Night' }}</p>
                         {% if booking.actual_check_out %}
                         <p><strong>Actual Check-out:</strong> {{ booking.actual_check_out.strftime('%d %b %Y, %I:%M %p') }}</p>
                         {% endif %}

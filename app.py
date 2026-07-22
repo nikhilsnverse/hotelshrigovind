@@ -202,7 +202,7 @@ class Booking(db.Model):
     actual_check_in = db.Column(db.DateTime)
     actual_check_out = db.Column(db.DateTime)
     stay_duration = db.Column(db.Integer, nullable=False)
-    billing_mode = db.Column(db.String(20), default='12_hours')
+    billing_mode = db.Column(db.String(20), default='default')
     number_of_persons = db.Column(db.Integer, default=1)
     gst_mode = db.Column(db.String(20), default='exclude')
     room_charge = db.Column(db.Numeric(10,3), default=0)
@@ -212,6 +212,7 @@ class Booking(db.Model):
     subtotal = db.Column(db.Numeric(10,3), default=0)
     gst_rate = db.Column(db.Numeric(5,3), default=5)
     gst_amount = db.Column(db.Numeric(10,3), default=0)
+    round_off = db.Column(db.Numeric(10,3), default=0)
     total_amount = db.Column(db.Numeric(10,3), default=0)
     advance_amount = db.Column(db.Numeric(10,3), default=0)
     pending_amount = db.Column(db.Numeric(10,3), default=0)
@@ -235,21 +236,6 @@ class Booking(db.Model):
     payments = db.relationship('Payment', backref='booking', lazy=True)
     invoice = db.relationship('Invoice', backref='booking', uselist=False)
     accompanying_persons = db.relationship('AccompanyingPerson', backref='booking', lazy=True)
-
-    @property
-    def round_off(self):
-        """Round-off adjustment applied to reach the whole-rupee grand total."""
-        try:
-            total = Decimal(str(self.total_amount or 0))
-            gst = Decimal(str(self.gst_amount or 0))
-            subtotal = Decimal(str(self.subtotal or 0))
-            if self.gst_mode == 'exclude':
-                pre_total = subtotal + gst
-            else:
-                pre_total = subtotal
-            return total - pre_total
-        except Exception:
-            return Decimal('0')
 
 class Payment(db.Model):
     __tablename__ = 'payments'
@@ -533,28 +519,24 @@ def calculate_extra_person_charge(room_type, total_persons, stay_duration):
 
 def calculate_nights(check_in_dt, check_out_dt, checkout_hour=12, checkout_minute=0, billing_mode='default'):
     """
-    Calculate stay duration in nights using either hotel-style noon cutoff or
-    explicit 12-hour / 24-hour billing modes.
+    Calculate stay duration in nights.
 
-    - default: preserve the existing hotel checkout-boundary logic (12:00 PM)
-    - 12_hours: charge one night for each full 12-hour block elapsed
-    - 24_hours: charge one night for each full 24-hour block elapsed
+    - default: hotel checkout-boundary logic (12:00 PM cutoff)
+    - 24_hours: one night for each full 24-hour block elapsed
     - minimum charge is always at least 1 night
     """
     if not check_in_dt or not check_out_dt:
         return 1
 
-    if billing_mode == '12_hours':
-        elapsed_seconds = max(0, (check_out_dt - check_in_dt).total_seconds())
-        nights = max(1, math.ceil(elapsed_seconds / 43200))
-        return nights
+    if check_out_dt <= check_in_dt:
+        return 1
 
     if billing_mode == '24_hours':
         elapsed_seconds = max(0, (check_out_dt - check_in_dt).total_seconds())
         nights = max(1, math.ceil(elapsed_seconds / 86400))
         return nights
 
-    # Preserve the previous hotel-style logic for legacy/default behavior
+    # Default mode: preserve the previous hotel checkout-boundary logic
     days_between = (check_out_dt.date() - check_in_dt.date()).days
 
     try:
@@ -1399,9 +1381,7 @@ def new_booking():
         
         check_in_time_str = request.form.get('check_in_time')
         check_out_time_str = request.form.get('check_out_time')
-        billing_mode = request.form.get('billing_mode', '12_hours')
-        if billing_mode not in ['12_hours', '24_hours']:
-            billing_mode = '12_hours'
+        billing_mode = '24_hours'
         now = datetime.now()
         
         try:
@@ -1610,21 +1590,42 @@ def checkout(booking_id):
                 new_checkout = datetime.strptime(checkout_date, '%Y-%m-%d')
             
             booking.actual_check_out = new_checkout
-            booking.check_out = new_checkout
-
-            # Recalculate stay duration using the hotel's checkout-time rule (12:00 PM)
-            reference_check_in = booking.actual_check_in if booking.actual_check_in else booking.check_in
-            try:
-                booking.stay_duration = calculate_nights(
-                    reference_check_in,
-                    new_checkout,
-                    billing_mode=booking.billing_mode or '12_hours'
-                )
-            except Exception:
-                booking.stay_duration = 1
+            
+            original_checkout = booking.check_out
+            
+            if new_checkout.date() == original_checkout.date():
+                late_hours = (new_checkout - original_checkout).total_seconds() / 3600
+                if late_hours > 0:
+                    late_charge = late_hours * 200
+                    existing = ExtraCharge.query.filter_by(
+                        booking_id=booking.id,
+                        charge_type='late_checkout'
+                    ).first()
+                    if not existing:
+                        ec = ExtraCharge(
+                            booking_id=booking.id,
+                            charge_type='late_checkout',
+                            description=f'Late Checkout ({late_hours:.1f} hours beyond {original_checkout.strftime("%I:%M %p")})',
+                            quantity=1,
+                            amount=Decimal(str(round(late_charge, 2))),
+                            created_by=current_user.id
+                        )
+                        db.session.add(ec)
+                        db.session.commit()
+            else:
+                booking.check_out = new_checkout
+                reference_check_in = booking.actual_check_in if booking.actual_check_in else booking.check_in
+                try:
+                    booking.stay_duration = calculate_nights(
+                        reference_check_in,
+                        new_checkout,
+                        billing_mode=booking.billing_mode or 'default'
+                    )
+                except Exception:
+                    booking.stay_duration = 1
             
             db.session.commit()
-            flash(f'Checkout date updated to {new_checkout.strftime("%d %b %Y %I:%M %p")}', 'success')
+            flash(f'Checkout updated to {new_checkout.strftime("%d %b %Y %I:%M %p")}', 'success')
         except Exception as e:
             flash(f'Error updating checkout date: {str(e)}', 'danger')
     
@@ -1654,6 +1655,7 @@ def checkout(booking_id):
     booking.subtotal = Decimal(str(bill_data.get('subtotal', 0)))
     booking.gst_amount = Decimal(str(bill_data.get('gst_amount', 0)))
     booking.total_amount = Decimal(str(bill_data.get('total_amount', 0)))
+    booking.round_off = Decimal(str(bill_data.get('round_off', 0)))
     booking.pending_amount = Decimal(str(bill_data.get('pending_amount', 0)))
     db.session.commit()
     
@@ -1714,21 +1716,45 @@ def checkout(booking_id):
                 new_checkout = datetime(
                     int(date_parts[0]), int(date_parts[1]), int(date_parts[2]),
                     int(time_parts[0]), int(time_parts[1]))
+                
+                original_checkout = booking.check_out
                 booking.actual_check_out = new_checkout
                 
-                # Recalculate stay duration using checkout-time rule
-                reference_check_in = booking.actual_check_in if booking.actual_check_in else booking.check_in
-                try:
-                    booking.stay_duration = calculate_nights(
-                        reference_check_in,
-                        new_checkout,
-                        billing_mode=booking.billing_mode or '12_hours'
-                    )
-                except Exception:
-                    booking.stay_duration = 1
-                booking.check_out = new_checkout
-            except:
-                booking.actual_check_out = now
+                if new_checkout.date() == original_checkout.date():
+                    late_hours = (new_checkout - original_checkout).total_seconds() / 3600
+                    if late_hours > 0:
+                        late_charge = late_hours * 200
+                        existing = ExtraCharge.query.filter_by(
+                            booking_id=booking.id,
+                            charge_type='late_checkout'
+                        ).first()
+                        if not existing:
+                            ec = ExtraCharge(
+                                booking_id=booking.id,
+                                charge_type='late_checkout',
+                                description=f'Late Checkout ({late_hours:.1f} hours beyond {original_checkout.strftime("%I:%M %p")})',
+                                quantity=1,
+                                amount=Decimal(str(round(late_charge, 2))),
+                                created_by=current_user.id
+                            )
+                            db.session.add(ec)
+                            db.session.commit()
+                else:
+                    booking.check_out = new_checkout
+                    reference_check_in = booking.actual_check_in if booking.actual_check_in else booking.check_in
+                    try:
+                        booking.stay_duration = calculate_nights(
+                            reference_check_in,
+                            new_checkout,
+                            billing_mode=booking.billing_mode or 'default'
+                        )
+                    except Exception:
+                        booking.stay_duration = 1
+                
+                db.session.commit()
+                flash(f'Checkout updated to {new_checkout.strftime("%d %b %Y %I:%M %p")}', 'success')
+            except Exception as e:
+                flash(f'Error updating checkout date: {str(e)}', 'danger')
         else:
             booking.actual_check_out = now
         
@@ -1740,6 +1766,7 @@ def checkout(booking_id):
         booking.subtotal = Decimal(str(bill_data['subtotal']))
         booking.gst_amount = Decimal(str(bill_data['gst_amount']))
         booking.total_amount = Decimal(str(bill_data['total_amount']))
+        booking.round_off = Decimal(str(bill_data['round_off']))
         booking.pending_amount = Decimal(str(bill_data['pending_amount']))
         
         for payment in booking.payments:
@@ -1854,9 +1881,9 @@ def edit_booking(booking_id):
         new_check_out = request.form.get('check_out_date')
         new_persons = int(request.form.get('number_of_persons', 1))
         purpose_of_visit = request.form.get('purpose_of_visit', booking.purpose_of_visit)
-        new_billing_mode = request.form.get('billing_mode', booking.billing_mode or '12_hours')
-        if new_billing_mode not in ['12_hours', '24_hours']:
-            new_billing_mode = booking.billing_mode or '12_hours'
+        new_billing_mode = request.form.get('billing_mode', booking.billing_mode or 'default')
+        if new_billing_mode not in ['default', '24_hours']:
+            new_billing_mode = booking.billing_mode or 'default'
         
         if new_check_in and new_check_out:
             check_in = datetime.strptime(new_check_in, '%Y-%m-%d')
@@ -1943,6 +1970,7 @@ def delete_charge(charge_id):
     booking.subtotal = Decimal(str(bill_data['subtotal']))
     booking.gst_amount = Decimal(str(bill_data['gst_amount']))
     booking.total_amount = Decimal(str(bill_data['total_amount']))
+    booking.round_off = Decimal(str(bill_data['round_off']))
     booking.pending_amount = Decimal(str(bill_data['pending_amount']))
     db.session.commit()
     
@@ -1960,6 +1988,7 @@ def recalculate_booking(booking_id):
     booking.subtotal = Decimal(str(bill_data['subtotal']))
     booking.gst_amount = Decimal(str(bill_data['gst_amount']))
     booking.total_amount = Decimal(str(bill_data['total_amount']))
+    booking.round_off = Decimal(str(bill_data['round_off']))
     booking.pending_amount = Decimal(str(bill_data['pending_amount']))
     db.session.commit()
     log_activity('Recalculate Bill', f'Bill recalculated for {booking.booking_id}')
@@ -2784,7 +2813,8 @@ def migrate_database():
             ('wedding_package', "ALTER TABLE bookings ADD COLUMN wedding_package VARCHAR(20)"),
             ('wedding_custom_rooms', "ALTER TABLE bookings ADD COLUMN wedding_custom_rooms INTEGER"),
             ('wedding_selected_rooms', "ALTER TABLE bookings ADD COLUMN wedding_selected_rooms TEXT"),
-            ('billing_mode', "ALTER TABLE bookings ADD COLUMN billing_mode VARCHAR(20) DEFAULT '12_hours'"),
+            ('billing_mode', "ALTER TABLE bookings ADD COLUMN billing_mode VARCHAR(20) DEFAULT 'default'"),
+            ('round_off', "ALTER TABLE bookings ADD COLUMN round_off NUMERIC(10,3) DEFAULT 0"),
         ]
         
         for col_name, alter_sql in migration_columns:

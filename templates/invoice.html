@@ -149,7 +149,7 @@
                 <h1><strong>INVOICE</strong></h1>
                 <div class="invoice-meta">
                     <p><strong>{{ invoice.invoice_number }}</strong></p>
-                    <p><strong>Date: {{ invoice.generated_at.strftime('%d %b %Y, %I:%M %p') }}</strong></p>
+                    <p><strong>Date: {{ invoice.generated_at.strftime('%d %b %Y') }}</strong></p>
                 </div>
             </div>
             <img src="{{ url_for('static', filename='real_scanner.jpeg') }}" alt="QR Code" style="max-height: 80px; max-width: 80px;" onerror="this.style.display='none'">
@@ -215,9 +215,8 @@
                 <th style="width:40px;"><strong>S.No</strong></th>
                 <th><strong>Description</strong></th>
                 <th style="text-align:center; width:80px;"><strong>Nights</strong></th>
-                <th style="text-align:right; width:110px;"><strong>Amount</strong></th>
+                <th style="text-align:right; width:120px;"><strong>Amount</strong></th>
                 <th style="text-align:right; width:110px;"><strong>Discount</strong></th>
-                <th style="text-align:right; width:110px;"><strong>Taxable</strong></th>
                 <th style="text-align:right; width:120px;"><strong>Total</strong></th>
             </tr>
         </thead>
@@ -254,7 +253,6 @@
                     <td style="text-align:center">{{ booking.stay_duration }}</td>
                     <td style="text-align:right">Rs. {{ "%.2f"|format(amount) }}</td>
                     <td style="text-align:right">{% if discount_amt > 0 %}- Rs. {{ "%.2f"|format(discount_amt) }}{% else %}-{% endif %}</td>
-                    <td style="text-align:right">Rs. {{ "%.2f"|format(taxable) }}</td>
                     <td style="text-align:right">Rs. {{ "%.2f"|format(total) }}</td>
                 </tr>
             {% else %}
@@ -279,7 +277,6 @@
                     <td style="text-align:center">{{ booking.stay_duration }}</td>
                     <td style="text-align:right">Rs. {{ "%.2f"|format(amount) }}</td>
                     <td style="text-align:right">{% if discount_amt > 0 %}- Rs. {{ "%.2f"|format(discount_amt) }}{% else %}-{% endif %}</td>
-                    <td style="text-align:right">Rs. {{ "%.2f"|format(taxable) }}</td>
                     <td style="text-align:right">Rs. {{ "%.2f"|format(total) }}</td>
                 </tr>
             {% endif %}

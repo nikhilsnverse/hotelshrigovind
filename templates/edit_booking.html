@@ -66,7 +66,7 @@
                 <div class="form-group">
                     <label class="form-label">Billing Rule *</label>
                     <select name="billing_mode" class="form-control form-select">
-                        <option value="12_hours" {{ 'selected' if booking.billing_mode == '12_hours' or not booking.billing_mode else '' }}>12 Hours = 1 Night</option>
+                        <option value="default" {{ 'selected' if not booking.billing_mode or booking.billing_mode == 'default' else '' }}>Hotel Rule (12 PM Cutoff)</option>
                         <option value="24_hours" {{ 'selected' if booking.billing_mode == '24_hours' else '' }}>24 Hours = 1 Night</option>
                     </select>
                     <small style="color: var(--gray-500);">Choose the rule used to count stay duration.</small>
