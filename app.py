@@ -398,9 +398,7 @@ def calculate_bill(booking):
     try:
         if booking.booking_category == 'wedding':
             if booking.wedding_package == 'custom_ac':
-                if booking.room_charge and booking.room_charge > 0:
-                    base_room_charge = booking.room_charge
-                elif booking.wedding_selected_rooms:
+                if booking.wedding_selected_rooms:
                     selected_ids = [int(x) for x in booking.wedding_selected_rooms.split(',') if x]
                     selected_rooms = Room.query.filter(Room.id.in_(selected_ids)).all()
                     package_rate = sum(Decimal(str(r.price_per_night)) for r in selected_rooms)
@@ -768,6 +766,7 @@ def create_pdf_invoice(invoice, booking, customer, room):
             else:
                 room_rate = 15000
                 desc = 'Wedding Package (Custom AC)'
+            amount = float(room_rate)
         else:
             wedding_rates = {'all_9_ac': 15000, 'all_rooms': 17000}
             room_rate = wedding_rates.get(booking.wedding_package, 15000)
@@ -1336,6 +1335,7 @@ def new_booking():
     customers = Customer.query.order_by(Customer.name).all()
     available_rooms = Room.query.filter(Room.status.in_(['available', 'cleaning'])).order_by(Room.room_number).all()
     gst_rate = float(Settings.get('gst_rate', '5'))
+    wedding_gst_rates = {'all_9_ac': 5, 'all_rooms': 18, 'custom_ac': 18}
     
     if not available_rooms:
         flash('No rooms are currently available. Please wait for rooms to be cleaned or check room statuses.', 'warning')
@@ -1435,6 +1435,7 @@ def new_booking():
             base_room_charge = package_rate * stay_duration
             extra_person_charge = 0
             number_of_persons = int(request.form.get('number_of_persons', 1))
+            gst_rate = wedding_gst_rates.get(wedding_package, gst_rate)
         else:
             custom_rooms = None
             wedding_selected_rooms_str = None
@@ -1996,6 +1997,9 @@ def edit_booking(booking_id):
             booking.extra_person_charges = Decimal(str(extra_person_charge))
             
             gst_rate = float(Settings.get('gst_rate', '5'))
+            if booking.booking_category == 'wedding':
+                wedding_gst_rates = {'all_9_ac': 5, 'all_rooms': 18, 'custom_ac': 18}
+                gst_rate = wedding_gst_rates.get(booking.wedding_package, gst_rate)
             booking.gst_rate = Decimal(str(gst_rate))
             
             subtotal = base_room_charge + extra_person_charge
@@ -2025,7 +2029,8 @@ def edit_booking(booking_id):
             flash('Booking updated successfully!', 'success')
             return redirect(url_for('booking_detail', booking_id=booking_id))
     
-    return render_template('edit_booking.html', booking=booking, room=room, customer=customer)
+    extra_person_charge = Settings.get('extra_person_charge', '300')
+    return render_template('edit_booking.html', booking=booking, room=room, customer=customer, extra_person_charge=extra_person_charge)
 
 @app.route('/api/charges/<int:charge_id>', methods=['DELETE'])
 @login_required

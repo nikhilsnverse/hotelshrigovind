@@ -78,9 +78,9 @@
                         {% if booking.booking_category == 'wedding' %}
                         Wedding package - no extra person charges
                         {% elif room and room.room_type in ['classic', 'standard', 'deluxe'] %}
-                        Free up to 2 persons. Extra @ Rs. 500/person/night
+                        Free up to 2 persons. Extra @ Rs. {{ extra_person_charge }}/person/night
                         {% else %}
-                        Free up to 3 persons. Extra @ Rs. 500/person/night
+                        Free up to 3 persons. Extra @ Rs. {{ extra_person_charge }}/person/night
                         {% endif %}
                     </small>
                 </div>
@@ -116,14 +116,14 @@
                     {% if booking.number_of_persons > 2 and room.room_type in ['classic', 'standard', 'deluxe'] %}
                     <tr style="color: var(--warning);">
                         <td>Extra Person Charges</td>
-                        <td style="text-align: right;">{{ booking.number_of_persons - 2 }} x Rs. 500</td>
-                        <td style="text-align: right;">Rs. {{ ((booking.number_of_persons - 2) * 500 * booking.stay_duration)|int }}</td>
+                        <td style="text-align: right;">{{ booking.number_of_persons - 2 }} x Rs. {{ extra_person_charge }}</td>
+                        <td style="text-align: right;">Rs. {{ ((booking.number_of_persons - 2) * extra_person_charge|int * booking.stay_duration)|int }}</td>
                     </tr>
                     {% elif booking.number_of_persons > 3 and room.room_type == 'suite' %}
                     <tr style="color: var(--warning);">
                         <td>Extra Person Charges</td>
-                        <td style="text-align: right;">{{ booking.number_of_persons - 3 }} x Rs. 500</td>
-                        <td style="text-align: right;">Rs. {{ ((booking.number_of_persons - 3) * 500 * booking.stay_duration)|int }}</td>
+                        <td style="text-align: right;">{{ booking.number_of_persons - 3 }} x Rs. {{ extra_person_charge }}</td>
+                        <td style="text-align: right;">Rs. {{ ((booking.number_of_persons - 3) * extra_person_charge|int * booking.stay_duration)|int }}</td>
                     </tr>
                     {% endif %}
                     <tr style="border-top: 1px solid var(--gray-300);">
@@ -160,6 +160,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const weddingPackage = '{{ booking.wedding_package or '' }}';
     const roomPrice = {{ room.price_per_night|int if room else 0 }};
     const roomType = '{{ room.room_type if room else '' }}';
+    const extraPersonRate = parseInt('{{ extra_person_charge }}') || 300;
     
     const weddingRates = {'all_9_ac': 15000, 'all_rooms': 17000, 'custom_ac': {{ ((booking.room_charge / booking.stay_duration)|round) if booking.stay_duration else 0 }}};
     const weddingNames = {'all_9_ac': 'All 9 AC Rooms', 'all_rooms': 'All Rooms', 'custom_ac': 'Custom AC ({{ booking.wedding_custom_rooms or 0 }} Rooms)'};
@@ -214,7 +215,7 @@ document.addEventListener('DOMContentLoaded', function() {
             let extraPersons = persons > freePersons ? persons - freePersons : 0;
             
             const baseRoomCharge = roomPrice * nights;
-            const extraPersonCharge = extraPersons * 500 * nights;
+            const extraPersonCharge = extraPersons * extraPersonRate * nights;
             const total = baseRoomCharge + extraPersonCharge;
             
             html += `
@@ -228,7 +229,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 html += `
                 <tr style="color: var(--warning);">
                     <td>Extra Person Charges</td>
-                    <td style="text-align: right;">${extraPersons} x Rs. 500 x ${nights}</td>
+                    <td style="text-align: right;">${extraPersons} x Rs. ${extraPersonRate} x ${nights}</td>
                     <td style="text-align: right;">Rs. ${extraPersonCharge.toLocaleString()}</td>
                 </tr>`;
             }
