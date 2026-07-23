@@ -1576,6 +1576,21 @@ def checkout(booking_id):
         flash('This booking is not active', 'warning')
         return redirect(url_for('bookings'))
     
+    # Handle discount update from query params (applied via JS before checkout)
+    discount = request.args.get('discount')
+    if discount is not None:
+        try:
+            discount_val = Decimal(str(discount))
+            if discount_val < 0:
+                raise ValueError('Discount cannot be negative')
+            booking.discount = discount_val
+            db.session.commit()
+            flash(f'Discount updated to Rs. {discount}', 'success')
+            return redirect(url_for('checkout', booking_id=booking_id))
+        except Exception as e:
+            flash(f'Error updating discount: {str(e)}', 'danger')
+            return redirect(url_for('checkout', booking_id=booking_id))
+    
     # Handle checkout date/time update from query params
     checkout_date = request.args.get('checkout_date')
     checkout_time = request.args.get('checkout_time')
@@ -1696,19 +1711,6 @@ def checkout(booking_id):
         
         return redirect(url_for('checkout', booking_id=booking_id))
     
-    if request.method == 'POST' and 'process_checkout' in request.form:
-        discount = request.args.get('discount')
-        if discount is not None:
-            try:
-                discount_val = Decimal(str(discount))
-                if discount_val < 0:
-                    raise ValueError('Discount cannot be negative')
-                booking.discount = discount_val
-                db.session.commit()
-                flash(f'Discount updated to Rs. {discount}', 'success')
-            except Exception as e:
-                flash(f'Error updating discount: {str(e)}', 'danger')
-    
     room = db.session.get(Room, booking.room_id) if booking.room_id else None
     customer = db.session.get(Customer, booking.customer_id)
     extra_form = ExtraChargeForm()
@@ -1774,7 +1776,6 @@ def checkout(booking_id):
         return redirect(url_for('checkout', booking_id=booking_id))
     
     if request.method == 'POST' and 'process_checkout' in request.form:
-        discount = float(request.form.get('discount', 0))
         now = datetime.now()
         
         manual_date = request.form.get('checkout_date', '')
@@ -1830,8 +1831,6 @@ def checkout(booking_id):
         else:
             if not booking.actual_check_out:
                 booking.actual_check_out = now
-        
-        booking.discount = Decimal(str(discount))
         booking.status = 'checked_out'
         booking.checked_out_by = current_user.id
         
