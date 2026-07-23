@@ -240,7 +240,7 @@
                         <td style="padding: 12px 0; font-weight: 700; font-size: 16px;">Grand Total (Incl. GST {{ "%.1f"|format(bill_data.gst_rate) }}%)</td>
                         <td style="text-align: right; font-weight: 700; font-size: 16px; color: var(--primary);" class="text-mono">Rs. <span id="grand-total-amount">{{ "%.0f"|format(bill_data.total_amount) }}</span></td>
                     </tr>
-                    {% else %}
+                    {% elif bill_data.gst_mode == 'exclude' %}
                     {% set cgst_e = (bill_data.gst_amount|float / 2)|round(2) if bill_data.gst_amount else 0 %}
                     {% set sgst_e = bill_data.gst_amount|float - cgst_e if bill_data.gst_amount else 0 %}
                     <tr style="border-top: 1px dashed var(--gray-300);">
@@ -262,15 +262,20 @@
                         <td style="text-align: right;" class="text-mono">Rs. <span id="gst-amount">{{ "%.2f"|format(bill_data.gst_amount) }}</span></td>
                     </tr>
                     {% endif %}
-                    <tr id="round-off-row" style="{% if not bill_data.round_off or bill_data.round_off|float == 0 %}display: none;{% endif %}">
-                        <td style="padding: 4px 0;">Round Off</td>
-                        <td style="text-align: right;" class="text-mono"><span id="round-off-amount">{{ "%+.2f"|format(bill_data.round_off|float) }}</span></td>
-                    </tr>
                     <tr style="border-top: 2px solid var(--primary);">
                         <td style="padding: 12px 0; font-weight: 700; font-size: 16px;">Grand Total (incl. GST {{ "%.1f"|format(bill_data.gst_rate) }}%)</td>
                         <td style="text-align: right; font-weight: 700; font-size: 16px; color: var(--primary);" class="text-mono">Rs. <span id="grand-total-amount">{{ "%.0f"|format(bill_data.total_amount) }}</span></td>
                     </tr>
+                    {% else %}
+                    <tr>
+                        <td style="padding: 10px 0; font-weight: 700; font-size: 16px;">Grand Total</td>
+                        <td style="text-align: right; font-weight: 700; font-size: 16px; color: var(--primary);" class="text-mono">Rs. {{ "%.0f"|format(bill_data.total_amount) }}</td>
+                    </tr>
                     {% endif %}
+                    <tr id="round-off-row" style="{% if not bill_data.round_off or bill_data.round_off|float == 0 %}display: none;{% endif %}">
+                        <td style="padding: 4px 0;">Round Off</td>
+                        <td style="text-align: right;" class="text-mono"><span id="round-off-amount">{{ "%+.2f"|format(bill_data.round_off|float) }}</span></td>
+                    </tr>
                     {% if booking.advance_amount > 0 %}
                     <tr>
                         <td style="padding: 8px 0; color: var(--success);">Advance Paid</td>
@@ -285,14 +290,14 @@
                     {% endif %}
                 </table>
                 
-                <form method="POST" style="margin-top: 25px;">
-                    <input type="hidden" name="process_checkout" value="1">
+                <form method="POST" id="checkout-update-form" style="margin-top: 25px;">
+                    <input type="hidden" name="update_checkout" value="1">
                     
                     <div class="form-group">
                         <label class="form-label">Checkout Date & Time</label>
                         <div style="display: flex; gap: 10px;">
-                            <input type="date" name="checkout_date" id="checkout_date_input" class="form-control" required>
-                            <input type="time" name="checkout_time" id="checkout_time_input" class="form-control" required>
+                            <input type="date" name="checkout_date" id="checkout_date_input" class="form-control">
+                            <input type="time" name="checkout_time" id="checkout_time_input" class="form-control" value="12:00">
                         </div>
                         <button type="button" class="btn btn-warning btn-sm" style="margin-top: 10px;" onclick="updateCheckoutAndReload()">
                             <i class="fas fa-sync"></i> Update Duration & Bill
@@ -308,7 +313,10 @@
                             </button>
                         </div>
                     </div>
-                    
+                </form>
+                
+                <form method="POST" style="margin-top: 15px;">
+                    <input type="hidden" name="process_checkout" value="1">
                     <button type="submit" class="btn btn-success btn-lg" style="width: 100%;">
                         <i class="fas fa-check-circle"></i> Complete Check-out
                     </button>
@@ -325,6 +333,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     var dateInput = document.getElementById('checkout_date_input');
     var timeInput = document.getElementById('checkout_time_input');
+    
     var checkoutDateTime = '{{ booking.check_out.strftime("%Y-%m-%d") if booking.check_out else "" }}';
     var checkoutTime = '{{ booking.check_out.strftime("%H:%M") if booking.check_out else "12:00" }}';
     
@@ -334,32 +343,63 @@ document.addEventListener('DOMContentLoaded', function() {
     if (timeInput && !timeInput.value && checkoutTime) {
         timeInput.value = checkoutTime;
     }
-    // Run initial preview computation
+    if (timeInput && !timeInput.value) {
+        timeInput.value = '12:00';
+    }
+    
+    var actualCheckout = '{{ booking.actual_check_out.strftime("%Y-%m-%d %H:%M") if booking.actual_check_out else "" }}';
+    if (actualCheckout && dateInput && timeInput) {
+        var parts = actualCheckout.split(' ');
+        if (parts[0]) dateInput.value = parts[0];
+        if (parts[1]) timeInput.value = parts[1];
+    }
+    
     computeCheckoutPreview();
 });
 
 function updateCheckoutAndReload() {
     var dateInput = document.getElementById('checkout_date_input');
     var timeInput = document.getElementById('checkout_time_input');
+    var btn = event.target;
     
     if (!dateInput || !dateInput.value) {
-        alert('Please select checkout date');
-        return;
+        if (!dateInput.value && !timeInput.value) {
+            alert('Please select at least checkout date or time');
+            return;
+        }
     }
     
     if (!timeInput || !timeInput.value) {
-        alert('Please select checkout time');
-        return;
+        timeInput.value = '12:00';
     }
     
-    // Show loading
-    var btn = event.target;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
     btn.disabled = true;
     
-    // Reload with new checkout date and time as query params
-    var url = window.location.pathname + '?checkout_date=' + dateInput.value + '&checkout_time=' + timeInput.value;
-    window.location.href = url;
+    var formData = new FormData();
+    formData.append('update_checkout', '1');
+    if (dateInput && dateInput.value) formData.append('checkout_date', dateInput.value);
+    if (timeInput && timeInput.value) formData.append('checkout_time', timeInput.value);
+    
+    fetch(window.location.pathname, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    }).then(function(response) {
+        if (response.ok) {
+            window.location.reload();
+        } else {
+            btn.innerHTML = '<i class="fas fa-sync"></i> Update Duration & Bill';
+            btn.disabled = false;
+            alert('Error updating checkout');
+        }
+    }).catch(function() {
+        btn.innerHTML = '<i class="fas fa-sync"></i> Update Duration & Bill';
+        btn.disabled = false;
+        alert('Error updating checkout');
+    });
 }
 
 function formatCurrency(num) {
@@ -367,7 +407,6 @@ function formatCurrency(num) {
 }
 
 function calculateNightsFromDatetimes(checkInStr, checkOutDateStr, checkOutTimeStr) {
-    // checkInStr should be ISO datetime string
     var ci = new Date(checkInStr);
     var co = new Date(checkOutDateStr + 'T' + checkOutTimeStr);
     if (isNaN(ci.getTime()) || isNaN(co.getTime())) return 1;
@@ -375,15 +414,7 @@ function calculateNightsFromDatetimes(checkInStr, checkOutDateStr, checkOutTimeS
     var ciDate = new Date(ci.getFullYear(), ci.getMonth(), ci.getDate());
     var coDate = new Date(co.getFullYear(), co.getMonth(), co.getDate());
     var daysBetween = Math.floor((coDate - ciDate) / (1000 * 60 * 60 * 24));
-
-    var checkoutBoundaryHour = 12, checkoutBoundaryMinute = 0;
-    if (co.getHours() > checkoutBoundaryHour || (co.getHours() === checkoutBoundaryHour && co.getMinutes() > checkoutBoundaryMinute)) {
-        nights = daysBetween + 1;
-    } else {
-        nights = daysBetween;
-    }
-    if (nights < 1) nights = 1;
-    return nights;
+    return Math.max(1, daysBetween);
 }
 
 function computeCheckoutPreview() {

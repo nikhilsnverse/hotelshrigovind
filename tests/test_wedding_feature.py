@@ -188,7 +188,7 @@ class TestWeddingFeature(unittest.TestCase):
         b = self._make_wedding_booking('all_9_ac', stay_duration=1)
         b.extra_person_charges = Decimal('500')
         data = calculate_bill(b)
-        self.assertEqual(data['extra_person_charges'], Decimal('500'))
+        self.assertEqual(data['extra_person_charges'], Decimal('0'))
         self.assertEqual(data['base_room_charge'], Decimal('15000'))
 
     def test_wedding_custom_ac_rate_changes_with_rooms(self):

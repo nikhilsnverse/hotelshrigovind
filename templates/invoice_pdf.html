@@ -260,7 +260,7 @@
             <tr>
                 <th style="width:36px;"><strong>S.No</strong></th>
                 <th><strong>Description</strong></th>
-                <th style="width:60px;" class="center"><strong>Nights</strong></th>
+                <th style="width:60px;" class="center"><strong>Nights/Qty</strong></th>
                 <th style="width:110px;" class="amount"><strong>Amount</strong></th>
                 <th style="width:110px;" class="amount"><strong>Discount</strong></th>
                 <th style="width:120px;" class="amount"><strong>Total</strong></th>
@@ -322,6 +322,45 @@
                 <td class="amount text-mono">Rs. {{ "%.2f"|format(total) }}</td>
             </tr>
             {% endif %}
+
+            {% if booking.extra_person_charges and booking.extra_person_charges > 0 %}
+                {% set ep_amount = booking.extra_person_charges|float %}
+                {% set row_idx = row_idx + 1 %}
+                {% if booking.gst_mode == 'include' %}
+                    {% set ep_total = ep_amount %}
+                {% elif booking.gst_mode == 'exclude' %}
+                    {% set ep_total = ep_amount + (ep_amount * gst / 100) %}
+                {% else %}
+                    {% set ep_total = ep_amount %}
+                {% endif %}
+                <tr>
+                    <td>{{ row_idx }}</td>
+                    <td><strong>Extra Person Charges</strong></td>
+                    <td class="center">{{ booking.stay_duration }}</td>
+                    <td class="amount text-mono">Rs. {{ "%.2f"|format(ep_amount) }}</td>
+                    <td class="amount text-mono">-</td>
+                    <td class="amount text-mono">Rs. {{ "%.2f"|format(ep_total) }}</td>
+                </tr>
+            {% endif %}
+
+            {% for charge in booking.extra_charges_list %}
+                {% set ch_amount = charge.amount|float %}
+                {% if booking.gst_mode == 'include' %}
+                    {% set ch_total = ch_amount %}
+                {% elif booking.gst_mode == 'exclude' %}
+                    {% set ch_total = ch_amount + (ch_amount * gst / 100) %}
+                {% else %}
+                    {% set ch_total = ch_amount %}
+                {% endif %}
+                <tr>
+                    <td>{{ row_idx + loop.index }}</td>
+                    <td><strong>{{ charge.description or charge.charge_type|replace('_', ' ')|title }}</strong></td>
+                    <td class="center">{% if charge.charge_type == 'late_checkout' %}-{% else %}{{ charge.quantity }}{% endif %}</td>
+                    <td class="amount text-mono">Rs. {{ "%.2f"|format(ch_amount) }}</td>
+                    <td class="amount text-mono">-</td>
+                    <td class="amount text-mono">Rs. {{ "%.2f"|format(ch_total) }}</td>
+                </tr>
+            {% endfor %}
         </tbody>
     </table>
 

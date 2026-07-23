@@ -167,7 +167,7 @@
         <tbody>
             <tr>
                 <th><strong>Description</strong></th>
-                <th style="width:60px;" class="center"><strong>Nights</strong></th>
+                <th style="width:60px;" class="center"><strong>Nights/Qty</strong></th>
                 <th style="width:120px;" class="amount"><strong>Amount</strong></th>
                 <th style="width:110px;" class="amount"><strong>Discount</strong></th>
                 <th style="width:120px;" class="amount"><strong>Total</strong></th>
@@ -254,7 +254,6 @@
         {% for ec in booking.extra_charges_list %}
             {% set amount = ec.amount|float %}
             {% set qty = ec.quantity or 1 %}
-            {% set row_idx = row_idx + 1 %}
             {% if booking.gst_mode == 'include' %}
                 {% set taxable = (amount * 100) / (100 + gst) %}
                 {% set total = amount %}
@@ -266,9 +265,9 @@
                 {% set total = amount %}
             {% endif %}
             <tr>
-                <td>{{ row_idx }}</td>
+                <td>{{ row_idx + loop.index }}</td>
                 <td><strong>{{ ec.description if ec.description else ec.charge_type|replace('_', ' ')|title }}</strong></td>
-                <td style="text-align: center;">{{ qty }}</td>
+                <td style="text-align: center;">{% if ec.charge_type == 'late_checkout' %}-{% else %}{{ qty }}{% endif %}</td>
                 <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(amount) }}</td>
                 <td style="text-align: right;" class="text-mono">-</td>
                 <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(taxable) }}</td>
