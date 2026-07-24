@@ -1912,29 +1912,7 @@ def delete_booking(booking_id):
     db.session.delete(booking)
     db.session.commit()
 
-    customer_deleted = False
-    if customer:
-        remaining_bookings = Booking.query.filter_by(customer_id=customer.id).count()
-        if remaining_bookings == 0:
-            if customer.id_proof_file:
-                try:
-                    if r2_storage.is_configured():
-                        r2_storage.delete_file(customer.id_proof_file)
-                    else:
-                        upload_path = os.path.join(app.config['UPLOAD_FOLDER'], customer.id_proof_file)
-                        if os.path.exists(upload_path):
-                            os.remove(upload_path)
-                except Exception:
-                    pass
-            db.session.delete(customer)
-            db.session.commit()
-            customer_deleted = True
-
-    log_action = 'Delete Booking'
-    if customer_deleted:
-        log_activity(log_action, f'Booking {booking.booking_id} and customer {customer.name} deleted')
-    else:
-        log_activity(log_action, f'Booking {booking.booking_id} deleted')
+    log_activity('Delete Booking', f'Booking {booking.booking_id} deleted')
 
     return jsonify({'success': True, 'message': 'Booking deleted successfully'})
 
