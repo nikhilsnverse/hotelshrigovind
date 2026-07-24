@@ -28,7 +28,7 @@
                         {% if booking.booking_category == 'wedding' %}
                         {% set wp = booking.wedding_package %}
                         {% if wp == 'custom_ac' %}
-                        <p style="margin: 0;"><strong>Custom AC ({{ booking.wedding_custom_rooms or 0 }} Rooms)</strong></p>
+                        <p style="margin: 0;"><strong>Custom Rooms</strong></p>
                         <p style="margin: 5px 0 0; color: var(--gray-500);">Rs. {{ (booking.room_charge / booking.stay_duration)|round if booking.stay_duration else 0 }}/day (custom selection)</p>
                         {% else %}
                         <p style="margin: 0;"><strong>{{ {'all_9_ac': 'All 9 AC Rooms', 'all_rooms': 'All Rooms'}.get(wp, 'Wedding Package') }}</strong></p>

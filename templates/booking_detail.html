@@ -67,7 +67,7 @@
                     {% set wp = booking.wedding_package %}
                     <div>
                         <p style="margin: 0;"><strong style="font-size: 20px; color: var(--primary);">
-                            {% if wp == 'custom_ac' %}Custom AC ({{ booking.wedding_custom_rooms or 0 }} Rooms)
+                            {% if wp == 'custom_ac' %}Custom Rooms
                     {% elif wp == 'all_9_ac' %}All 9 AC Rooms{% else %}All Rooms{% endif %}
                         </strong></p>
                         <p style="margin: 5px 0 0; color: var(--gray-500);">
