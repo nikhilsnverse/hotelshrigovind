@@ -295,19 +295,13 @@
             {% endif %}
 
             {% for charge in booking.extra_charges_list %}
-                {% set ch_amount = charge.amount|float %}
-                {% if booking.gst_mode == 'include' %}
-                    {% set ch_total = ch_amount %}
-                {% elif booking.gst_mode == 'exclude' %}
-                    {% set ch_total = ch_amount + (ch_amount * gst / 100) %}
-                {% else %}
-                    {% set ch_total = ch_amount %}
-                {% endif %}
+                {% set ch_total = charge.amount|float %}
+                {% set ch_unit_price = (ch_total / charge.quantity) if charge.quantity and charge.quantity > 0 else ch_total %}
                 <tr>
                     <td>{{ row_idx + loop.index }}</td>
                     <td><strong>{{ charge.description or charge.charge_type|replace('_', ' ')|title }}</strong></td>
                     <td style="text-align:center">{% if charge.charge_type == 'late_checkout' %}-{% else %}{{ charge.quantity }}{% endif %}</td>
-                    <td style="text-align:right">Rs. {{ "%.2f"|format(ch_amount) }}</td>
+                    <td style="text-align:right">Rs. {{ "%.2f"|format(ch_unit_price) }}</td>
                     <td style="text-align:right">-</td>
                     <td style="text-align:right">Rs. {{ "%.2f"|format(ch_total) }}</td>
                 </tr>

@@ -252,25 +252,26 @@
             </tr>
         {% endif %}
         {% for ec in booking.extra_charges_list %}
-            {% set amount = ec.amount|float %}
+            {% set ch_total = ec.amount|float %}
             {% set qty = ec.quantity or 1 %}
+            {% set ch_unit_price = (ch_total / qty) if qty > 0 else ch_total %}
             {% if booking.gst_mode == 'include' %}
-                {% set taxable = (amount * 100) / (100 + gst) %}
-                {% set total = amount %}
+                {% set taxable = (ch_total * 100) / (100 + gst) %}
+                {% set total = ch_total %}
             {% elif booking.gst_mode == 'exclude' %}
-                {% set taxable = amount %}
-                {% set total = amount + (amount * gst / 100) %}
+                {% set taxable = ch_total %}
+                {% set total = ch_total + (ch_total * gst / 100) %}
             {% else %}
-                {% set taxable = amount %}
-                {% set total = amount %}
+                {% set taxable = ch_total %}
+                {% set total = ch_total %}
             {% endif %}
             <tr>
                 <td>{{ row_idx + loop.index }}</td>
                 <td><strong>{{ ec.description if ec.description else ec.charge_type|replace('_', ' ')|title }}</strong></td>
                 <td style="text-align: center;">{% if ec.charge_type == 'late_checkout' %}-{% else %}{{ qty }}{% endif %}</td>
-                <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(amount) }}</td>
+                <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(ch_unit_price) }}</td>
                 <td style="text-align: right;" class="text-mono">-</td>
-                <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(taxable) }}</td>
+                <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(ch_total) }}</td>
                 <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(total) }}</td>
             </tr>
         {% endfor %}
