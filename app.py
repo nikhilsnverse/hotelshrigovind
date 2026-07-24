@@ -795,6 +795,36 @@ def create_pdf_invoice(invoice, booking, customer, room):
     items_data.append([P(str(idx)), P(f'<b>{desc}</b>'), P(str(booking.stay_duration), a=TA_CENTER), P(f'Rs. {amount:,.2f}', a=TA_RIGHT), P(discount_str, a=TA_RIGHT), P(f'Rs. {taxable:,.2f}', a=TA_RIGHT), P(f'Rs. {total:,.2f}', a=TA_RIGHT)])
     idx += 1
 
+    # Extra person charges
+    if float(booking.extra_person_charges or 0) > 0:
+        ep_amount = float(booking.extra_person_charges)
+        ep_total = ep_amount
+        if booking.gst_mode == 'exclude' and gst > 0:
+            ep_total = ep_amount + (ep_amount * gst / 100)
+        items_data.append([P(str(idx)), P('<b>Extra Person Charges</b>'), P(str(booking.stay_duration), a=TA_CENTER), P(f'Rs. {ep_amount:,.2f}', a=TA_RIGHT), P('-', a=TA_RIGHT), P(f'Rs. {ep_total:,.2f}', a=TA_RIGHT), P(f'Rs. {ep_total:,.2f}', a=TA_RIGHT)])
+        idx += 1
+
+    # Extra charges (late checkout, food, etc.)
+    for charge in booking.extra_charges_list:
+        if charge.charge_type == 'late_checkout':
+            ch_total = float(charge.amount)
+            desc_text = 'Late Checkout'
+            try:
+                hrs = float(charge.description.split('(')[1].split(' ')[0])
+                per_hr_rate = ch_total / hrs if hrs > 0 else ch_total
+                qty_display = f'{hrs:.1f} hr'
+                rate_label = f'Rs. {per_hr_rate:.2f} /hr'
+            except Exception:
+                qty_display = charge.quantity or 1
+                rate_label = f'Rs. {ch_total / (charge.quantity or 1):.2f}'
+        else:
+            ch_total = float(charge.amount)
+            desc_text = charge.description or charge.charge_type.replace('_', ' ').title()
+            qty_display = charge.quantity or 1
+            rate_label = f'Rs. {ch_total / (charge.quantity or 1):.2f}'
+        items_data.append([P(str(idx)), P(f'<b>{desc_text}</b>'), P(str(qty_display), a=TA_CENTER), P(rate_label, a=TA_RIGHT), P('-', a=TA_RIGHT), P(f'Rs. {ch_total:,.2f}', a=TA_RIGHT), P(f'Rs. {ch_total:,.2f}', a=TA_RIGHT)])
+        idx += 1
+
     # Column widths scaled to match HTML invoice proportions and fit within page
     # S.No: 28, Description: 200, Nights: 45, Amount: 70, Discount: 70, Taxable: 70, Total: 80
     items_table = Table(items_data, colWidths=[28, 200, 45, 70, 70, 70, 80])
@@ -881,6 +911,11 @@ def create_pdf_invoice(invoice, booking, customer, room):
     totals_table.setStyle(ts)
     elements.append(totals_table)
     elements.append(Spacer(1, 25))
+    
+    elements.append(Spacer(1, 10))
+    elements.append(P('<i>Thank you for staying with us!</i>', fs=10, c=GRAY, a=TA_CENTER))
+    elements.append(P('<b>Terms:</b> Check-out time is 12:00 PM. Late checkout charges apply after that.', fs=9, c=GRAY, a=TA_CENTER))
+    elements.append(Spacer(1, 20))
     
     elements.append(Spacer(1, 20))
     
