@@ -252,9 +252,21 @@
             </tr>
         {% endif %}
         {% for ec in booking.extra_charges_list %}
-            {% set ch_total = ec.amount|float %}
-            {% set qty = ec.quantity or 1 %}
-            {% set ch_unit_price = (ch_total / qty) if qty > 0 else ch_total %}
+            {% if ec.charge_type == 'late_checkout' %}
+                {% set ch_total = ec.amount|float %}
+                {% set desc_text = 'Late Checkout' %}
+                {% set hrs = ec.description.split('(')[1].split(' ')[0]|float if '(' in ec.description else 1 %}
+                {% set per_hr_rate = ch_total / hrs if hrs > 0 else ch_total %}
+                {% set qty_display = hrs ~ ' hr' %}
+                {% set rate_label = 'Rs. %.2f /hr'|format(per_hr_rate) %}
+            {% else %}
+                {% set ch_total = ec.amount|float %}
+                {% set desc_text = ec.description if ec.description else ec.charge_type|replace('_', ' ')|title %}
+                {% set hrs = ec.quantity or 1 %}
+                {% set per_hr_rate = (ch_total / hrs) if hrs > 0 else ch_total %}
+                {% set qty_display = ec.quantity %}
+                {% set rate_label = 'Rs. %.2f'|format(per_hr_rate) %}
+            {% endif %}
             {% if booking.gst_mode == 'include' %}
                 {% set taxable = (ch_total * 100) / (100 + gst) %}
                 {% set total = ch_total %}
@@ -267,9 +279,9 @@
             {% endif %}
             <tr>
                 <td>{{ row_idx + loop.index }}</td>
-                <td><strong>{{ ec.description if ec.description else ec.charge_type|replace('_', ' ')|title }}</strong></td>
-                <td style="text-align: center;">{% if ec.charge_type == 'late_checkout' %}-{% else %}{{ qty }}{% endif %}</td>
-                <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(ch_unit_price) }}</td>
+                <td><strong>{{ desc_text }}</strong></td>
+                <td style="text-align: center;">{{ qty_display }}</td>
+                <td style="text-align: right;" class="text-mono">{{ rate_label }}</td>
                 <td style="text-align: right;" class="text-mono">-</td>
                 <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(ch_total) }}</td>
                 <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(total) }}</td>

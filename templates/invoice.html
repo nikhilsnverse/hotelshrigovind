@@ -295,13 +295,25 @@
             {% endif %}
 
             {% for charge in booking.extra_charges_list %}
-                {% set ch_total = charge.amount|float %}
-                {% set ch_unit_price = (ch_total / charge.quantity) if charge.quantity and charge.quantity > 0 else ch_total %}
+                {% if charge.charge_type == 'late_checkout' %}
+                    {% set ch_total = charge.amount|float %}
+                    {% set desc_text = 'Late Checkout' %}
+                    {% set hrs = charge.description.split('(')[1].split(' ')[0]|float if '(' in charge.description else 1 %}
+                    {% set per_hr_rate = ch_total / hrs if hrs > 0 else ch_total %}
+                    {% set qty_display = hrs ~ ' hr' %}
+                    {% set rate_label = 'Rs. %.2f /hr'|format(per_hr_rate) %}
+                {% else %}
+                    {% set ch_total = charge.amount|float %}
+                    {% set desc_text = charge.description or charge.charge_type|replace('_', ' ')|title %}
+                    {% set per_hr_rate = (ch_total / charge.quantity) if charge.quantity and charge.quantity > 0 else ch_total %}
+                    {% set qty_display = charge.quantity %}
+                    {% set rate_label = 'Rs. %.2f'|format(per_hr_rate) %}
+                {% endif %}
                 <tr>
                     <td>{{ row_idx + loop.index }}</td>
-                    <td><strong>{{ charge.description or charge.charge_type|replace('_', ' ')|title }}</strong></td>
-                    <td style="text-align:center">{% if charge.charge_type == 'late_checkout' %}-{% else %}{{ charge.quantity }}{% endif %}</td>
-                    <td style="text-align:right">Rs. {{ "%.2f"|format(ch_unit_price) }}</td>
+                    <td><strong>{{ desc_text }}</strong></td>
+                    <td style="text-align:center">{{ qty_display }}</td>
+                    <td style="text-align:right">{{ rate_label }}</td>
                     <td style="text-align:right">-</td>
                     <td style="text-align:right">Rs. {{ "%.2f"|format(ch_total) }}</td>
                 </tr>
