@@ -297,7 +297,14 @@
                         <label class="form-label">Checkout Date & Time</label>
                         <div style="display: flex; gap: 10px;">
                             <input type="date" name="checkout_date" id="checkout_date_input" class="form-control">
-                            <input type="time" name="checkout_time" id="checkout_time_input" class="form-control" value="12:00">
+                            <input type="number" name="checkout_hour" id="checkout_hour" class="form-control" min="1" max="12" value="12" placeholder="HH" style="flex: 1; min-width: 70px;">
+                            <span style="font-weight: bold; font-size: 18px;">:</span>
+                            <input type="number" name="checkout_minute" id="checkout_minute" class="form-control" min="0" max="59" value="0" placeholder="MM" style="flex: 1; min-width: 70px;">
+                            <select name="checkout_ampm" id="checkout_ampm" class="form-control" style="flex: 1; min-width: 75px;">
+                                <option value="AM">AM</option>
+                                <option value="PM" selected>PM</option>
+                            </select>
+                            <input type="hidden" name="checkout_time" id="checkout_time_input" value="12:00">
                         </div>
                         <button type="button" class="btn btn-warning btn-sm" style="margin-top: 10px;" onclick="updateCheckoutAndReload()">
                             <i class="fas fa-sync"></i> Update Duration & Bill
@@ -329,30 +336,69 @@
 
 {% block extra_js %}
 <script>
+function set24HourTime(hour24, minute) {
+    var hourInput = document.getElementById('checkout_hour');
+    var minuteInput = document.getElementById('checkout_minute');
+    var ampmSelect = document.getElementById('checkout_ampm');
+    var hiddenInput = document.getElementById('checkout_time_input');
+    if (hourInput && minuteInput && ampmSelect && hiddenInput) {
+        var h = parseInt(hour24, 10);
+        var ampm = h >= 12 ? 'PM' : 'AM';
+        var hour12 = h % 12;
+        if (hour12 === 0) hour12 = 12;
+        hourInput.value = hour12;
+        minuteInput.value = parseInt(minute, 10);
+        ampmSelect.value = ampm;
+        hiddenInput.value = hour24 + ':' + minute;
+    }
+}
+
+function updateTimeHidden() {
+    var hourInput = document.getElementById('checkout_hour');
+    var minuteInput = document.getElementById('checkout_minute');
+    var ampmSelect = document.getElementById('checkout_ampm');
+    var hiddenInput = document.getElementById('checkout_time_input');
+    if (hourInput && minuteInput && ampmSelect && hiddenInput) {
+        var h = parseInt(hourInput.value, 10);
+        if (isNaN(h) || h < 1 || h > 12) { h = 12; hourInput.value = 12; }
+        var m = parseInt(minuteInput.value, 10);
+        if (isNaN(m) || m < 0 || m > 59) { m = 0; minuteInput.value = 0; }
+        if (ampmSelect.value === 'PM' && h !== 12) h += 12;
+        if (ampmSelect.value === 'AM' && h === 12) h = 0;
+        hiddenInput.value = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    }
+}
+
 // Pre-fill checkout date/time from booking
 document.addEventListener('DOMContentLoaded', function() {
     var dateInput = document.getElementById('checkout_date_input');
-    var timeInput = document.getElementById('checkout_time_input');
+    var hiddenInput = document.getElementById('checkout_time_input');
     
     var checkoutDateTime = '{{ booking.check_out.strftime("%Y-%m-%d") if booking.check_out else "" }}';
-    var checkoutTime = '{{ booking.check_out.strftime("%H:%M") if booking.check_out else "12:00" }}';
+    var checkoutTime24 = '{{ booking.check_out.strftime("%H:%M") if booking.check_out else "12:00" }}';
     
     if (dateInput && !dateInput.value && checkoutDateTime) {
         dateInput.value = checkoutDateTime;
     }
-    if (timeInput && !timeInput.value && checkoutTime) {
-        timeInput.value = checkoutTime;
-    }
-    if (timeInput && !timeInput.value) {
-        timeInput.value = '12:00';
+    if (hiddenInput && checkoutTime24) {
+        var parts = checkoutTime24.split(':');
+        set24HourTime(parts[0], parts[1] || '00');
     }
     
     var actualCheckout = '{{ booking.actual_check_out.strftime("%Y-%m-%d %H:%M") if booking.actual_check_out else "" }}';
-    if (actualCheckout && dateInput && timeInput) {
+    if (actualCheckout && dateInput && hiddenInput) {
         var parts = actualCheckout.split(' ');
         if (parts[0]) dateInput.value = parts[0];
-        if (parts[1]) timeInput.value = parts[1];
+        if (parts[1]) {
+            var t = parts[1].split(':');
+            set24HourTime(t[0], t[1] || '00');
+        }
     }
+    
+    // Update hidden input when time inputs change
+    document.getElementById('checkout_hour')?.addEventListener('input', updateTimeHidden);
+    document.getElementById('checkout_minute')?.addEventListener('input', updateTimeHidden);
+    document.getElementById('checkout_ampm')?.addEventListener('change', updateTimeHidden);
     
     computeCheckoutPreview();
 });

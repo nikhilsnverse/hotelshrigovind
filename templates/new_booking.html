@@ -225,7 +225,16 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Check-in Time *</label>
-                            <input type="time" name="check_in_time" class="form-control" required>
+                            <div style="display: flex; gap: 5px; align-items: center;">
+                                <input type="number" name="check_in_hour" id="check_in_hour" class="form-control" min="1" max="12" value="12" placeholder="HH" style="flex: 1; min-width: 70px;" required>
+                                <span style="font-weight: bold; font-size: 18px;">:</span>
+                                <input type="number" name="check_in_minute" id="check_in_minute" class="form-control" min="0" max="59" value="0" placeholder="MM" style="flex: 1; min-width: 70px;" required>
+                                <select name="check_in_ampm" id="check_in_ampm" class="form-control" style="flex: 1; min-width: 75px;" required>
+                                    <option value="AM">AM</option>
+                                    <option value="PM" selected>PM</option>
+                                </select>
+                                <input type="hidden" name="check_in_time" id="check_in_time_hidden" value="">
+                            </div>
                         </div>
                     </div>
                     
@@ -903,6 +912,21 @@ function validateForm() {
     if (!checkIn) {
         alert('Please select check-in date');
         return false;
+    }
+
+    // Convert 12-hour time to 24-hour format before submit
+    var hour = document.getElementById('check_in_hour')?.value;
+    var minute = document.getElementById('check_in_minute')?.value;
+    var ampm = document.getElementById('check_in_ampm')?.value;
+    if (hour && minute && ampm) {
+        var h = parseInt(hour, 10);
+        if (h < 1 || h > 12) { alert('Hour must be between 1 and 12'); return false; }
+        var m = parseInt(minute, 10);
+        if (m < 0 || m > 59) { alert('Minutes must be between 0 and 59'); return false; }
+        if (ampm === 'PM' && h !== 12) h += 12;
+        if (ampm === 'AM' && h === 12) h = 0;
+        document.getElementById('check_in_time_hidden').value = 
+            String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
     }
     
     return true;
