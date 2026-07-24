@@ -1335,7 +1335,6 @@ def new_booking():
     customers = Customer.query.order_by(Customer.name).all()
     available_rooms = Room.query.filter(Room.status.in_(['available', 'cleaning'])).order_by(Room.room_number).all()
     gst_rate = float(Settings.get('gst_rate', '5'))
-    wedding_gst_rates = {'all_9_ac': 5, 'all_rooms': 18, 'custom_ac': 18}
     
     if not available_rooms:
         flash('No rooms are currently available. Please wait for rooms to be cleaned or check room statuses.', 'warning')
@@ -1435,7 +1434,6 @@ def new_booking():
             base_room_charge = package_rate * stay_duration
             extra_person_charge = 0
             number_of_persons = int(request.form.get('number_of_persons', 1))
-            gst_rate = wedding_gst_rates.get(wedding_package, gst_rate)
         else:
             custom_rooms = None
             wedding_selected_rooms_str = None
@@ -1974,9 +1972,6 @@ def edit_booking(booking_id):
             booking.extra_person_charges = Decimal(str(extra_person_charge))
             
             gst_rate = float(Settings.get('gst_rate', '5'))
-            if booking.booking_category == 'wedding':
-                wedding_gst_rates = {'all_9_ac': 5, 'all_rooms': 18, 'custom_ac': 18}
-                gst_rate = wedding_gst_rates.get(booking.wedding_package, gst_rate)
             booking.gst_rate = Decimal(str(gst_rate))
             
             subtotal = base_room_charge + extra_person_charge
