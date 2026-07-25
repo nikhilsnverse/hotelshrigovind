@@ -713,9 +713,9 @@ def create_pdf_invoice(invoice, booking, customer, room):
                 selected_ids = [int(x) for x in booking.wedding_selected_rooms.split(',') if x]
                 selected_rooms = Room.query.filter(Room.id.in_(selected_ids)).all()
                 room_nums = ', '.join(r.room_number for r in selected_rooms)
-                pkg_name = f'Custom AC ({room_nums})'
+                pkg_name = f'Custom ({room_nums})'
             else:
-                pkg_name = 'Custom AC'
+                pkg_name = 'Custom'
         else:
             pkg_name = wedding_pkg_names.get(booking.wedding_package, 'Wedding Package')
         booking_lines.append(P(f'<b>Package:</b> {pkg_name}', fs=10))
@@ -762,10 +762,10 @@ def create_pdf_invoice(invoice, booking, customer, room):
                 selected_rooms = Room.query.filter(Room.id.in_(selected_ids)).all()
                 room_rate = float(sum(Decimal(str(r.price_per_night)) for r in selected_rooms))
                 room_nums = ', '.join(r.room_number for r in selected_rooms)
-                desc = f'Wedding Package (Custom AC - {room_nums})'
+                desc = f'Wedding Package (Custom - {room_nums})'
             else:
                 room_rate = 15000
-                desc = 'Wedding Package (Custom AC)'
+                desc = 'Wedding Package (Custom)'
             amount = float(room_rate)
         else:
             wedding_rates = {'all_9_ac': 15000, 'all_rooms': 17000}
@@ -851,26 +851,26 @@ def create_pdf_invoice(invoice, booking, customer, room):
         cgst = round(float(booking.gst_amount) / 2, 2)
         sgst = float(booking.gst_amount) - cgst
         charges_data.append([P('<i>Included Tax Breakdown</i>', fs=8, c=GRAY), P('', fs=10), P('', fs=10), P('', fs=10)])
-        charges_data.append([P('Taxable Amount', fs=9), P('', fs=10), P('', fs=10), P(f'Rs. {taxable:,.2f}', fs=9, a=TA_RIGHT, fn='Courier')])
-        charges_data.append([P(f'CGST @{gst_rate/2:.1f}%', fs=9), P('', fs=10), P('', fs=10), P(f'{cgst:,.2f}', fs=9, a=TA_RIGHT, fn='Courier')])
-        charges_data.append([P(f'SGST @{gst_rate/2:.1f}%', fs=9), P('', fs=10), P('', fs=10), P(f'{sgst:,.2f}', fs=9, a=TA_RIGHT, fn='Courier')])
-        charges_data.append([P('Total GST', fs=9, c=GRAY), P('', fs=10), P('', fs=10), P(f'{float(booking.gst_amount):,.2f}', fs=9, c=GRAY, a=TA_RIGHT, fn='Courier')])
+        charges_data.append([P('Taxable Amount', fs=9), P('', fs=10), P('', fs=10), P(f'Rs. {taxable:,.2f}', fs=9, a=TA_RIGHT)])
+        charges_data.append([P(f'CGST @{gst_rate/2:.1f}%', fs=9), P('', fs=10), P('', fs=10), P(f'{cgst:,.2f}', fs=9, a=TA_RIGHT)])
+        charges_data.append([P(f'SGST @{gst_rate/2:.1f}%', fs=9), P('', fs=10), P('', fs=10), P(f'{sgst:,.2f}', fs=9, a=TA_RIGHT)])
+        charges_data.append([P('Total GST', fs=9, c=GRAY), P('', fs=10), P('', fs=10), P(f'{float(booking.gst_amount):,.2f}', fs=9, c=GRAY, a=TA_RIGHT)])
         if abs(float(booking.round_off or 0)) >= 0.005:
-            charges_data.append([P('Round Off', fs=9, c=GRAY), P('', fs=10), P('', fs=10), P(f'{float(booking.round_off):+,.2f}', fs=9, c=GRAY, a=TA_RIGHT, fn='Courier')])
-        charges_data.append([P('', fs=10), P('', fs=10), P(f'<b>Grand Total:</b>', fs=11, c=PRIMARY, a=TA_RIGHT), P(f'<b>Rs. {float(booking.total_amount):,.0f}</b>', fs=11, c=PRIMARY, a=TA_RIGHT, fn='Courier')])
+            charges_data.append([P('Round Off', fs=9, c=GRAY), P('', fs=10), P('', fs=10), P(f'{float(booking.round_off):+,.2f}', fs=9, c=GRAY, a=TA_RIGHT)])
+        charges_data.append([P('<b>Grand Total:</b>', fs=11, c=PRIMARY, a=TA_RIGHT), P(f'<b>Rs. {float(booking.total_amount):,.0f}</b>', fs=11, c=PRIMARY, a=TA_RIGHT)])
     else:
         gst_amount = float(booking.gst_amount or 0)
         cgst_e = round(gst_amount / 2, 2) if gst_amount > 0 else 0
         sgst_e = gst_amount - cgst_e if gst_amount > 0 else 0
-        totals_data.append([P('<b>Subtotal:</b>', fs=10, a=TA_RIGHT), P(f'<b>Rs. {float(booking.subtotal):,.2f}</b>', fs=10, a=TA_RIGHT, fn='Courier')])
+        totals_data.append([P('<b>Subtotal:</b>', fs=10, a=TA_RIGHT), P(f'<b>Rs. {float(booking.subtotal):,.2f}</b>', fs=10, a=TA_RIGHT)])
         if gst_amount > 0:
             charges_data.append([P('', fs=10), P('', fs=10), P('<i>Tax Breakdown</i>', fs=8, c=GRAY, a=TA_RIGHT), P('', fs=10)])
-            charges_data.append([P('', fs=10), P('', fs=10), P(f'CGST @{gst_percent:.1f}%', fs=9, a=TA_RIGHT), P(f'{cgst_e:,.2f}', fs=9, a=TA_RIGHT, fn='Courier')])
-            charges_data.append([P('', fs=10), P('', fs=10), P(f'SGST @{gst_percent:.1f}%', fs=9, a=TA_RIGHT), P(f'{sgst_e:,.2f}', fs=9, a=TA_RIGHT, fn='Courier')])
-            charges_data.append([P('', fs=10), P('', fs=10), P('Total GST', fs=9, c=GRAY, a=TA_RIGHT), P(f'{gst_amount:,.2f}', fs=9, c=GRAY, a=TA_RIGHT, fn='Courier')])
+            charges_data.append([P('', fs=10), P('', fs=10), P(f'CGST @{gst_percent:.1f}%', fs=9, a=TA_RIGHT), P(f'{cgst_e:,.2f}', fs=9, a=TA_RIGHT)])
+            charges_data.append([P('', fs=10), P('', fs=10), P(f'SGST @{gst_percent:.1f}%', fs=9, a=TA_RIGHT), P(f'{sgst_e:,.2f}', fs=9, a=TA_RIGHT)])
+            charges_data.append([P('', fs=10), P('', fs=10), P('Total GST', fs=9, c=GRAY, a=TA_RIGHT), P(f'{gst_amount:,.2f}', fs=9, c=GRAY, a=TA_RIGHT)])
         if abs(float(booking.round_off or 0)) >= 0.005:
-            charges_data.append([P('', fs=10), P('', fs=10), P('Round Off', fs=9, c=GRAY, a=TA_RIGHT), P(f'{float(booking.round_off):+,.2f}', fs=9, c=GRAY, a=TA_RIGHT, fn='Courier')])
-        charges_data.append([P('', fs=10), P('', fs=10), P(f'<b>Grand Total:</b>', fs=11, c=PRIMARY, a=TA_RIGHT), P(f'<b>Rs. {float(booking.total_amount):,.0f}</b>', fs=11, c=PRIMARY, a=TA_RIGHT, fn='Courier')])
+            charges_data.append([P('', fs=10), P('', fs=10), P('Round Off', fs=9, c=GRAY, a=TA_RIGHT), P(f'{float(booking.round_off):+,.2f}', fs=9, c=GRAY, a=TA_RIGHT)])
+        charges_data.append([P('<b>Grand Total:</b>', fs=11, c=PRIMARY, a=TA_RIGHT), P(f'<b>Rs. {float(booking.total_amount):,.0f}</b>', fs=11, c=PRIMARY, a=TA_RIGHT)])
     
     if charges_data:
         charges_table = Table(charges_data, colWidths=[180, 80, 110, 150])
@@ -888,12 +888,12 @@ def create_pdf_invoice(invoice, booking, customer, room):
     advance = float(booking.advance_amount or 0)
     
     if advance > 0 and pending > 0:
-        totals_data.append([P('<b>Advance Paid:</b>', fs=10, c=SUCCESS, a=TA_RIGHT), P(f'<b>-Rs. {advance:,.2f}</b>', fs=10, c=SUCCESS, a=TA_RIGHT, fn='Courier')])
-        totals_data.append([P('<b>Balance Due:</b>', fs=10, c=DANGER, a=TA_RIGHT), P(f'<b>Rs. {pending:,.2f}</b>', fs=10, c=DANGER, a=TA_RIGHT, fn='Courier')])
+        totals_data.append([P('<b>Advance Paid:</b>', fs=10, c=SUCCESS, a=TA_RIGHT), P(f'<b>-Rs. {advance:,.2f}</b>', fs=10, c=SUCCESS, a=TA_RIGHT)])
+        totals_data.append([P('<b>Balance Due:</b>', fs=10, c=DANGER, a=TA_RIGHT), P(f'<b>Rs. {pending:,.2f}</b>', fs=10, c=DANGER, a=TA_RIGHT)])
     elif pending < 0:
-        totals_data.append([P('<b>Excess Paid:</b>', fs=10, c=SUCCESS, a=TA_RIGHT), P(f'<b>Rs. {advance - float(booking.total_amount):,.2f}</b>', fs=10, c=SUCCESS, a=TA_RIGHT, fn='Courier')])
+        totals_data.append([P('<b>Excess Paid:</b>', fs=10, c=SUCCESS, a=TA_RIGHT), P(f'<b>Rs. {advance - float(booking.total_amount):,.2f}</b>', fs=10, c=SUCCESS, a=TA_RIGHT)])
     else:
-        totals_data.append([P('<b>Paid:</b>', fs=10, c=SUCCESS, a=TA_RIGHT), P('<b>PAID</b>', fs=10, c=SUCCESS, a=TA_RIGHT, fn='Courier')])
+        totals_data.append([P('<b>Paid:</b>', fs=10, c=SUCCESS, a=TA_RIGHT), P('<b>PAID</b>', fs=10, c=SUCCESS, a=TA_RIGHT)])
     
     totals_table = Table(totals_data, colWidths=[300, 120])
     totals_table.hAlign = 'RIGHT'
@@ -2099,7 +2099,12 @@ def invoice_detail(invoice_id):
     room = db.session.get(Room, booking.room_id) if booking.room_id else None
     customer = db.session.get(Customer, booking.customer_id)
     
-    return render_template('invoice.html', invoice=invoice, booking=booking, room=room, customer=customer, now=datetime.now())
+    selected_rooms = []
+    if booking.booking_category == 'wedding' and booking.wedding_package == 'custom_ac' and booking.wedding_selected_rooms:
+        selected_ids = [int(x) for x in booking.wedding_selected_rooms.split(',') if x]
+        selected_rooms = Room.query.filter(Room.id.in_(selected_ids)).all()
+    
+    return render_template('invoice.html', invoice=invoice, booking=booking, room=room, customer=customer, now=datetime.now(), selected_rooms=selected_rooms)
 
 @app.route('/invoices/<int:invoice_id>/download')
 @login_required
