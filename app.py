@@ -2982,8 +2982,7 @@ def migrate_database():
             pass
         print(f"Migration error: {e}")
 
-@app.route('/api/rooms/<room_number>/set-available', methods=['POST'])
-@login_required
+@app.route('/api/rooms/<room_number>/set-available')
 def set_room_available(room_number):
     room = Room.query.filter_by(room_number=room_number).first()
     if not room:
@@ -2993,8 +2992,7 @@ def set_room_available(room_number):
     room.status = 'available'
     db.session.commit()
     
-    log_activity('Room Status', f'Room {room_number} changed from {old_status} to available')
-    return jsonify({'success': True, 'message': f'Room {room_number} is now available'})
+    return jsonify({'success': True, 'message': f'Room {room_number} changed from {old_status} to available'})
 
 if __name__ == '__main__':
     with app.app_context():
