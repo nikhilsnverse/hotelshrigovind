@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Wedding Pre-Bookings - {{ hotel.name }}{% endblock %}
+{% block page_title %}Wedding Pre-Bookings{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div>
+        <p style="color: var(--gray-500);">Manage wedding pre-booking records</p>
+    </div>
+    <button type="button" class="btn btn-primary" onclick="document.getElementById('add-form').style.display='block'">
+        <i class="fas fa-plus"></i> Add Pre-Booking
+    </button>
+</div>
+
+<div class="card" id="add-form" style="display: none; margin-bottom: 20px;">
+    <div class="card-header">
+        <h3 class="card-title">New Wedding Pre-Booking</h3>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('add_wedding_booking') }}">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Name *</label>
+                    <input type="text" name="name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone *</label>
+                    <input type="text" name="phone" class="form-control" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Possible Check-in</label>
+                    <input type="datetime-local" name="possible_check_in" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Possible Check-out</label>
+                    <input type="date" name="possible_check_out" class="form-control">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Advance Paid (Rs.)</label>
+                    <input type="number" name="advance_paid" class="form-control" min="0" step="1" value="0">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Remaining (Rs.)</label>
+                    <input type="number" name="remaining" class="form-control" min="0" step="1" value="0">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Notes</label>
+                <textarea name="notes" class="form-control" rows="2"></textarea>
+            </div>
+            <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Save</button>
+            <button type="button" class="btn btn-outline" onclick="this.closest('#add-form').style.display='none'">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body" style="padding: 0;">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>S.No</th>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Possible Check-in</th>
+                        <th>Possible Check-out</th>
+                        <th>Advance (Rs.)</th>
+                        <th>Remaining (Rs.)</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if records %}
+                    {% for r in records %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td><strong>{{ r.name }}</strong></td>
+                        <td>{{ r.phone }}</td>
+                        <td>{{ r.possible_check_in.strftime('%d %b %Y, %I:%M %p') if r.possible_check_in else '-' }}</td>
+                        <td>{{ r.possible_check_out.strftime('%d %b %Y') if r.possible_check_out else '-' }}</td>
+                        <td class="text-mono">{{ r.advance_paid|int }}</td>
+                        <td class="text-mono">{{ r.remaining|int }}</td>
+                        <td><span class="badge {% if r.status == 'confirmed' %}badge-success{% elif r.status == 'cancelled' %}badge-danger{% else %}badge-warning{% endif %}">{{ r.status }}</span></td>
+                        <td>
+                            <div style="display: flex; gap: 5px;">
+                                <button type="button" class="btn btn-sm btn-primary" onclick="editRecord({{ r.id }})"><i class="fas fa-edit"></i></button>
+                                <form method="POST" action="{{ url_for('delete_wedding_booking', record_id=r.id) }}" onsubmit="return confirm('Delete this pre-booking?')" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 40px; color: var(--gray-400);">
+                            <i class="fas fa-inbox" style="font-size: 40px; display: block; margin-bottom: 10px;"></i>
+                            No wedding pre-bookings yet
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="edit-modal" style="display: none;">
+    <div class="modal" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3>Edit Pre-Booking</h3>
+            <button type="button" class="btn-close" onclick="closeEdit()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form method="POST" id="edit-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Name *</label>
+                        <input type="text" name="name" id="edit_name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone *</label>
+                        <input type="text" name="phone" id="edit_phone" class="form-control" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Possible Check-in</label>
+                        <input type="datetime-local" name="possible_check_in" id="edit_check_in" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Possible Check-out</label>
+                        <input type="date" name="possible_check_out" id="edit_check_out" class="form-control">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Advance Paid (Rs.)</label>
+                        <input type="number" name="advance_paid" id="edit_advance" class="form-control" min="0" step="1">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Remaining (Rs.)</label>
+                        <input type="number" name="remaining" id="edit_remaining" class="form-control" min="0" step="1">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Notes</label>
+                    <textarea name="notes" id="edit_notes" class="form-control" rows="2"></textarea>
+                </div>
+                <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Update</button>
+                <button type="button" class="btn btn-outline" onclick="closeEdit()">Cancel</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function editRecord(id) {
+    fetch('/api/wedding-booking/' + id)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            document.getElementById('edit_name').value = data.name;
+            document.getElementById('edit_phone').value = data.phone;
+            document.getElementById('edit_advance').value = data.advance_paid;
+            document.getElementById('edit_remaining').value = data.remaining;
+            document.getElementById('edit_notes').value = data.notes || '';
+            if (data.possible_check_in) {
+                document.getElementById('edit_check_in').value = data.possible_check_in.replace(' ', 'T');
+            } else {
+                document.getElementById('edit_check_in').value = '';
+            }
+            if (data.possible_check_out) {
+                document.getElementById('edit_check_out').value = data.possible_check_out;
+            } else {
+                document.getElementById('edit_check_out').value = '';
+            }
+            document.getElementById('edit-form').action = '/wedding-bookings/' + id + '/edit';
+            document.getElementById('edit-modal').style.display = 'flex';
+        });
+}
+
+function closeEdit() {
+    document.getElementById('edit-modal').style.display = 'none';
+}
+</script>
+{% endblock %}

@@ -293,6 +293,19 @@ class ActivityLog(db.Model):
     
     staff = db.relationship('Staff', backref='activities')
 
+class WeddingPreBooking(db.Model):
+    __tablename__ = 'wedding_pre_bookings'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    phone = db.Column(db.String(20), nullable=False)
+    possible_check_in = db.Column(db.DateTime)
+    possible_check_out = db.Column(db.DateTime)
+    advance_paid = db.Column(db.Numeric(10,2), default=0)
+    remaining = db.Column(db.Numeric(10,2), default=0)
+    notes = db.Column(db.Text)
+    status = db.Column(db.String(20), default='pending')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 # ==================== FORMS ====================
 
 class LoginForm(FlaskForm):
@@ -2498,87 +2511,102 @@ def activity_log():
     logs = ActivityLog.query.order_by(ActivityLog.created_at.desc()).limit(100).all()
     return render_template('activity_log.html', logs=logs)
 
-# ==================== HISTORY ====================
+# ==================== WEDDING PRE-BOOKINGS ====================
 
-@app.route('/history')
+@app.route('/wedding-bookings')
 @login_required
-def history():
-    date_from = request.args.get('date_from')
-    date_to = request.args.get('date_to')
-    history_type = request.args.get('type', 'all')
+def wedding_bookings():
+    records = WeddingPreBooking.query.order_by(WeddingPreBooking.created_at.desc()).all()
+    return render_template('wedding_bookings.html', records=records)
+
+@app.route('/wedding-bookings/add', methods=['POST'])
+@login_required
+def add_wedding_booking():
+    name = request.form.get('name', '').strip()
+    phone = request.form.get('phone', '').strip()
+    adv = float(request.form.get('advance_paid', 0))
     
-    # Default to last 30 days
-    if not date_to:
-        date_to = date.today()
-    if not date_from:
-        date_from = date_to - timedelta(days=30)
-    
+    check_in_str = request.form.get('possible_check_in')
+    check_out_str = request.form.get('possible_check_out')
+    possible_check_in = None
+    possible_check_out = None
     try:
-        date_from = datetime.strptime(str(date_from), '%Y-%m-%d') if isinstance(date_from, str) else datetime.combine(date_from, datetime.min.time())
-        date_to = datetime.strptime(str(date_to), '%Y-%m-%d') if isinstance(date_to, str) else datetime.combine(date_to, datetime.max.time())
-    except ValueError:
-        date_from = datetime.combine(date.today() - timedelta(days=30), datetime.min.time())
-        date_to = datetime.combine(date.today(), datetime.max.time())
+        if check_in_str:
+            possible_check_in = datetime.strptime(check_in_str, '%Y-%m-%dT%H:%M')
+    except:
+        pass
+    try:
+        if check_out_str:
+            possible_check_out = datetime.strptime(check_out_str, '%Y-%m-%d')
+    except:
+        pass
     
-    # Fetch bookings (only checked_out)
-    if history_type in ['all', 'bookings']:
-        bookings = Booking.query.filter(
-            Booking.created_at >= date_from,
-            Booking.created_at <= date_to,
-            Booking.status == 'checked_out'
-        ).order_by(Booking.created_at.desc()).all()
-    else:
-        bookings = []
+    remaining = float(request.form.get('remaining', 0))
     
-    # Fetch payments
-    if history_type in ['all', 'payments']:
-        payments = Payment.query.filter(
-            Payment.created_at >= date_from,
-            Payment.created_at <= date_to
-        ).order_by(Payment.created_at.desc()).all()
-    else:
-        payments = []
-    
-    # Fetch expenses
-    if history_type in ['all', 'expenses']:
-        expenses = Expense.query.filter(
-            Expense.expense_date >= date_from.date(),
-            Expense.expense_date <= date_to.date()
-        ).order_by(Expense.expense_date.desc()).all()
-    else:
-        expenses = []
-    
-    # Fetch activity logs
-    if history_type in ['all', 'activity']:
-        activities = ActivityLog.query.filter(
-            ActivityLog.created_at >= date_from,
-            ActivityLog.created_at <= date_to
-        ).order_by(ActivityLog.created_at.desc()).limit(200).all()
-    else:
-        activities = []
-    
-    # Calculate totals
-    total_revenue = sum(float(p.amount) for p in payments if p.payment_status == 'completed')
-    total_expenses = sum(float(e.amount) for e in expenses)
-    total_bookings = len(bookings)
-    checked_out_count = len(bookings)  # All bookings are now checked_out
-    
-    return render_template('history.html', 
-        bookings=bookings,
-        payments=payments,
-        expenses=expenses,
-        activities=activities,
-        date_from=date_from.strftime('%Y-%m-%d'),
-        date_to=date_to.strftime('%Y-%m-%d'),
-        history_type=history_type,
-        totals={
-            'revenue': total_revenue,
-            'expenses': total_expenses,
-            'bookings': total_bookings,
-            'checked_out': checked_out_count,
-            'profit': total_revenue - total_expenses
-        }
+    record = WeddingPreBooking(
+        name=name,
+        phone=phone,
+        possible_check_in=possible_check_in,
+        possible_check_out=possible_check_out,
+        advance_paid=adv,
+        remaining=remaining,
+        notes=request.form.get('notes', '')
     )
+    db.session.add(record)
+    db.session.commit()
+    flash('Wedding pre-booking added', 'success')
+    return redirect(url_for('wedding_bookings'))
+
+@app.route('/wedding-bookings/<int:record_id>/edit', methods=['POST'])
+@login_required
+def edit_wedding_booking(record_id):
+    record = db.get_or_404(WeddingPreBooking, record_id)
+    record.name = request.form.get('name', '').strip()
+    record.phone = request.form.get('phone', '').strip()
+    record.advance_paid = float(request.form.get('advance_paid', 0))
+    record.remaining = float(request.form.get('remaining', 0))
+    record.notes = request.form.get('notes', '')
+    
+    check_in_str = request.form.get('possible_check_in')
+    check_out_str = request.form.get('possible_check_out')
+    try:
+        if check_in_str:
+            record.possible_check_in = datetime.strptime(check_in_str, '%Y-%m-%dT%H:%M')
+    except:
+        pass
+    try:
+        if check_out_str:
+            record.possible_check_out = datetime.strptime(check_out_str, '%Y-%m-%d')
+    except:
+        pass
+    
+    db.session.commit()
+    flash('Wedding pre-booking updated', 'success')
+    return redirect(url_for('wedding_bookings'))
+
+@app.route('/wedding-bookings/<int:record_id>/delete', methods=['POST'])
+@login_required
+def delete_wedding_booking(record_id):
+    record = db.get_or_404(WeddingPreBooking, record_id)
+    db.session.delete(record)
+    db.session.commit()
+    flash('Wedding pre-booking deleted', 'success')
+    return redirect(url_for('wedding_bookings'))
+
+@app.route('/api/wedding-booking/<int:record_id>')
+@login_required
+def api_wedding_booking(record_id):
+    record = db.get_or_404(WeddingPreBooking, record_id)
+    return jsonify({
+        'id': record.id,
+        'name': record.name,
+        'phone': record.phone,
+        'possible_check_in': record.possible_check_in.strftime('%Y-%m-%dT%H:%M') if record.possible_check_in else None,
+        'possible_check_out': record.possible_check_out.strftime('%Y-%m-%d') if record.possible_check_out else None,
+        'advance_paid': float(record.advance_paid or 0),
+        'remaining': float(record.remaining or 0),
+        'notes': record.notes
+    })
 
 # ==================== SETTINGS ====================
 
@@ -2972,6 +3000,40 @@ def migrate_database():
             if 'booking_id' not in acc_columns:
                 conn.execute(text("ALTER TABLE accompanying_persons ADD COLUMN booking_id INTEGER"))
                 print("Added booking_id column to accompanying_persons")
+        
+        # Create wedding_pre_bookings table if not exists
+        if not has_table('wedding_pre_bookings'):
+            if dialect == 'postgresql':
+                conn.execute(text("""
+                    CREATE TABLE wedding_pre_bookings (
+                        id SERIAL PRIMARY KEY,
+                        name VARCHAR(100) NOT NULL,
+                        phone VARCHAR(20) NOT NULL,
+                        possible_check_in TIMESTAMP,
+                        possible_check_out DATE,
+                        advance_paid NUMERIC(10,2) DEFAULT 0,
+                        remaining NUMERIC(10,2) DEFAULT 0,
+                        notes TEXT,
+                        status VARCHAR(20) DEFAULT 'pending',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """))
+            else:
+                conn.execute(text("""
+                    CREATE TABLE wedding_pre_bookings (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name VARCHAR(100) NOT NULL,
+                        phone VARCHAR(20) NOT NULL,
+                        possible_check_in TIMESTAMP,
+                        possible_check_out DATE,
+                        advance_paid NUMERIC(10,2) DEFAULT 0,
+                        remaining NUMERIC(10,2) DEFAULT 0,
+                        notes TEXT,
+                        status VARCHAR(20) DEFAULT 'pending',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """))
+            print("Created wedding_pre_bookings table")
         
         trans.commit()
         print("Migration completed!")
