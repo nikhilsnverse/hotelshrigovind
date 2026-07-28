@@ -55,6 +55,8 @@
         justify-content: space-between;
         align-items: flex-start;
         gap: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #1a365d;
     }
     .invoice-logo {
         display: flex !important;
@@ -65,7 +67,7 @@
         text-align: right !important;
     }
     .invoice-table th {
-        font-size: 10px;
+        font-size: 9px;
         text-transform: uppercase;
         color: #000 !important;
         border-bottom: 2px solid #000;
@@ -74,10 +76,11 @@
         font-weight: bold;
     }
     .invoice-table td {
-        padding: 8px 6px;
-        border-bottom: 1px solid #000;
-        font-size: 11px;
+        padding: 6px;
+        border-bottom: 0.5px solid #000;
+        font-size: 10px;
         color: #000 !important;
+        vertical-align: middle;
     }
     .invoice-table .amount {
         text-align: right;
@@ -87,29 +90,29 @@
         width: 300px;
     }
     .invoice-totals td {
-        padding: 5px 0;
-        font-size: 11px;
+        padding: 3px 0;
+        font-size: 10px;
     }
     .invoice-totals .total-row {
         font-size: 14px;
         font-weight: 700;
-        color: var(--primary);
-        border-top: 2px solid var(--primary);
+        color: #1a365d;
+        border-top: 2px solid #1a365d;
     }
     .invoice-totals .balance {
         font-size: 15px;
         font-weight: 700;
-        color: var(--accent);
-        background: var(--gray-100);
+        color: #c9a227;
+        background: #f3f4f6;
         padding: 8px 12px;
-        border-radius: var(--border-radius);
+        border-radius: 8px;
         text-align: center;
     }
     .invoice-footer {
         text-align: center;
         padding-top: 15px;
-        border-top: 1px solid var(--gray-200);
-        color: var(--gray-500);
+        border-top: 1px solid #e5e7eb;
+        color: #6b7280;
         font-size: 10px;
     }
     .invoice-info {
@@ -119,15 +122,15 @@
         margin-bottom: 15px;
     }
     .invoice-section h4 {
-        font-size: 10px;
+        font-size: 9px;
         text-transform: uppercase;
-        color: var(--gray-500);
+        color: #6b7280;
         margin-bottom: 6px;
         letter-spacing: 0.5px;
     }
     .invoice-section p {
         margin: 2px 0;
-        font-size: 11px;
+        font-size: 10px;
     }
 }
 .invoice-box .text-mono {
@@ -138,7 +141,7 @@
 
 {% block content %}
 <div class="invoice-box">
-    <div class="invoice-header">
+    <div class="invoice-header" style="padding-bottom: 15px; border-bottom: 2px solid #1a365d; margin-bottom: 15px;">
         <div class="invoice-logo">
             <img src="{{ url_for('static', filename='logo.png') }}" alt="Hotel Logo" onerror="this.style.display='none'" style="max-height: 180px;">
             <div>
@@ -152,7 +155,7 @@
                 <h1><strong>INVOICE</strong></h1>
                 <div class="invoice-meta">
                     <p><strong>{{ invoice.invoice_number }}</strong></p>
-                    <p><strong>Date: {{ invoice.generated_at.strftime('%d %b %Y') }}</strong></p>
+                    <p><strong>Date: {{ invoice.generated_at.strftime('%d %b %Y, %I:%M %p') }}</strong></p>
                 </div>
             </div>
             <img src="{{ url_for('static', filename='real_scanner.jpeg') }}" alt="QR Code" style="max-height: 80px; max-width: 80px;" onerror="this.style.display='none'">
@@ -204,9 +207,9 @@
     
 {% if booking.accompanying_persons %}
     <div style="margin-bottom: 20px;">
-        <h4 style="color: var(--gray-500); font-size: 12px; text-transform: uppercase; margin-bottom: 10px;"><strong>Accompanying Persons</strong></h4>
+        <h4 style="color: #6b7280; font-size: 10px; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;"><strong>Accompanying Persons</strong></h4>
         {% for ap in booking.accompanying_persons %}
-        <span style="display: inline-block; background: var(--gray-100); padding: 5px 12px; border-radius: 15px; margin-right: 8px; font-size: 13px;">
+        <span style="display: inline-block; background: #f3f4f6; padding: 4px 10px; border-radius: 15px; margin-right: 8px; font-size: 11px;">
             <strong>{{ ap.name }}{% if ap.phone %} ({{ ap.phone }}){% endif %}</strong>
         </span>
         {% endfor %}
@@ -219,9 +222,10 @@
                 <th style="width:40px;"><strong>S.No</strong></th>
                 <th><strong>Description</strong></th>
                 <th style="text-align:center; width:80px;"><strong>Nights/Qty</strong></th>
-                <th style="text-align:right; width:120px;"><strong>Amount</strong></th>
-                <th style="text-align:right; width:110px;"><strong>Discount</strong></th>
-                <th style="text-align:right; width:120px;"><strong>Total</strong></th>
+                <th style="text-align:right; width:100px;"><strong>Amount</strong></th>
+                <th style="text-align:right; width:90px;"><strong>Discount</strong></th>
+                <th style="text-align:right; width:100px;"><strong>Taxable</strong></th>
+                <th style="text-align:right; width:110px;"><strong>Total</strong></th>
             </tr>
         </thead>
         <tbody>
@@ -241,20 +245,24 @@
                 {% set discount_amt = booking.discount|float %}
                 {% set amount_after_discount = amount - discount_amt %}
                 {% set row_idx = row_idx + 1 %}
-                {% if booking.gst_mode == 'include' %}
+                {% if booking.gst_mode == 'include' and gst > 0 %}
+                    {% set taxable = (amount_after_discount * 100) / (100 + gst) %}
                     {% set row_total = amount_after_discount %}
-                {% elif booking.gst_mode == 'exclude' %}
+                {% elif booking.gst_mode == 'exclude' and gst > 0 %}
+                    {% set taxable = amount_after_discount %}
                     {% set row_total = amount_after_discount + (amount_after_discount * gst / 100) %}
                 {% else %}
+                    {% set taxable = amount_after_discount %}
                     {% set row_total = amount_after_discount %}
                 {% endif %}
                 <tr>
                     <td>{{ row_idx }}</td>
                     <td><strong>Wedding Package ({{ package_name }})</strong></td>
                     <td style="text-align:center">{{ booking.stay_duration }}</td>
-                    <td style="text-align:right">Rs. {{ "%.2f"|format(amount) }}</td>
-                    <td style="text-align:right">{% if discount_amt > 0 %}- Rs. {{ "%.2f"|format(discount_amt) }}{% else %}-{% endif %}</td>
-                    <td style="text-align:right">Rs. {{ "%.2f"|format(row_total) }}</td>
+                    <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(amount) }}</td>
+                    <td style="text-align:right" class="text-mono nowrap">{% if discount_amt > 0 %}- Rs. {{ "%.2f"|format(discount_amt) }}{% else %}-{% endif %}</td>
+                    <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(taxable) }}</td>
+                    <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(row_total) }}</td>
                 </tr>
             {% else %}
                 {% set amount = room.price_per_night|float %}
@@ -262,20 +270,24 @@
                 {% set discount_amt = booking.discount|float %}
                 {% set amount_after_discount = base_total - discount_amt %}
                 {% set row_idx = row_idx + 1 %}
-                {% if booking.gst_mode == 'include' %}
+                {% if booking.gst_mode == 'include' and gst > 0 %}
+                    {% set taxable = (amount_after_discount * 100) / (100 + gst) %}
                     {% set row_total = amount_after_discount %}
-                {% elif booking.gst_mode == 'exclude' %}
+                {% elif booking.gst_mode == 'exclude' and gst > 0 %}
+                    {% set taxable = amount_after_discount %}
                     {% set row_total = amount_after_discount + (amount_after_discount * gst / 100) %}
                 {% else %}
+                    {% set taxable = amount_after_discount %}
                     {% set row_total = amount_after_discount %}
                 {% endif %}
                 <tr>
                     <td>{{ row_idx }}</td>
                     <td><strong>Room Charge ({{ room.room_number if room else 'N/A' }})</strong></td>
                     <td style="text-align:center">{{ booking.stay_duration }}</td>
-                    <td style="text-align:right">Rs. {{ "%.2f"|format(amount) }}</td>
-                    <td style="text-align:right">{% if discount_amt > 0 %}- Rs. {{ "%.2f"|format(discount_amt) }}{% else %}-{% endif %}</td>
-                    <td style="text-align:right">Rs. {{ "%.2f"|format(row_total) }}</td>
+                    <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(amount) }}</td>
+                    <td style="text-align:right" class="text-mono nowrap">{% if discount_amt > 0 %}- Rs. {{ "%.2f"|format(discount_amt) }}{% else %}-{% endif %}</td>
+                    <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(taxable) }}</td>
+                    <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(row_total) }}</td>
                 </tr>
             {% endif %}
 
@@ -284,7 +296,7 @@
                 {% set row_idx = row_idx + 1 %}
                 {% if booking.gst_mode == 'include' %}
                     {% set ep_total = ep_amount %}
-                {% elif booking.gst_mode == 'exclude' %}
+                {% elif booking.gst_mode == 'exclude' and gst > 0 %}
                     {% set ep_total = ep_amount + (ep_amount * gst / 100) %}
                 {% else %}
                     {% set ep_total = ep_amount %}
@@ -293,9 +305,10 @@
                     <td>{{ row_idx }}</td>
                     <td><strong>Extra Person Charges</strong></td>
                     <td style="text-align:center">{{ booking.stay_duration }}</td>
-                    <td style="text-align:right">Rs. {{ "%.2f"|format(ep_amount) }}</td>
+                    <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(ep_amount) }}</td>
                     <td style="text-align:right">-</td>
-                    <td style="text-align:right">Rs. {{ "%.2f"|format(ep_total) }}</td>
+                    <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(ep_total) }}</td>
+                    <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(ep_total) }}</td>
                 </tr>
             {% endif %}
 
@@ -318,9 +331,10 @@
                     <td>{{ row_idx + loop.index }}</td>
                     <td><strong>{{ desc_text }}</strong></td>
                     <td style="text-align:center">{{ qty_display }}</td>
-                    <td style="text-align:right">{{ rate_label }}</td>
+                    <td style="text-align:right" class="text-mono nowrap">{{ rate_label }}</td>
                     <td style="text-align:right">-</td>
-                    <td style="text-align:right">Rs. {{ "%.2f"|format(ch_total) }}</td>
+                    <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(ch_total) }}</td>
+                    <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(ch_total) }}</td>
                 </tr>
             {% endfor %}
         </tbody>
@@ -334,85 +348,85 @@
             {% set taxable = booking.total_amount|float - booking.gst_amount|float %}
             {% set cgst = (booking.gst_amount|float / 2)|round(2) %}
             {% set sgst = booking.gst_amount|float - cgst %}
-            <tr><td colspan="2" style="padding: 10px 0 5px 0; font-size: 11px; color: var(--gray-500);"><strong>Included Tax Breakdown</strong></td></tr>
-            <tr style="font-size: 12px;">
+            <tr><td colspan="2" style="padding: 10px 0 5px 0; font-size: 11px; color: #6b7280;"><strong>Included Tax Breakdown</strong></td></tr>
+            <tr style="font-size: 10px;">
                 <td style="padding-left: 10px;">Taxable Amount</td>
-                <td style="text-align: right;" class="text-mono">Rs. {{ "%.2f"|format(taxable) }}</td>
+                <td style="text-align: right; white-space: nowrap;" class="text-mono">Rs. {{ "%.2f"|format(taxable) }}</td>
             </tr>
-            <tr style="font-size: 12px;">
+            <tr style="font-size: 10px;">
                 <td style="padding-left: 10px;">CGST @{{ "%.1f"|format(booking.gst_rate|float / 2) }}%</td>
-                <td style="text-align: right;" class="text-mono">{{ "%.2f"|format(cgst) }}</td>
+                <td style="text-align: right; white-space: nowrap;" class="text-mono">{{ "%.2f"|format(cgst) }}</td>
             </tr>
-            <tr style="font-size: 12px;">
+            <tr style="font-size: 10px;">
                 <td style="padding-left: 10px;">SGST @{{ "%.1f"|format(booking.gst_rate|float / 2) }}%</td>
-                <td style="text-align: right;" class="text-mono">{{ "%.2f"|format(sgst) }}</td>
+                <td style="text-align: right; white-space: nowrap;" class="text-mono">{{ "%.2f"|format(sgst) }}</td>
             </tr>
-            <tr style="border-top: 1px solid var(--gray-300); font-size: 12px;">
+            <tr style="border-top: 1px solid #d1d5db; font-size: 10px;">
                 <td style="padding-left: 10px;">Total GST</td>
-                <td style="text-align: right;" class="text-mono">{{ "%.2f"|format(booking.gst_amount) }}</td>
+                <td style="text-align: right; white-space: nowrap;" class="text-mono">{{ "%.2f"|format(booking.gst_amount) }}</td>
             </tr>
             {% if booking.round_off and booking.round_off|float != 0 %}
-            <tr>
+            <tr style="font-size: 10px;">
                 <td>Round Off</td>
-                <td style="text-align: right;" class="text-mono">{{ "%+.2f"|format(booking.round_off|float) }}</td>
+                <td style="text-align: right; white-space: nowrap;" class="text-mono">{{ "%+.2f"|format(booking.round_off|float) }}</td>
             </tr>
             {% endif %}
-                        <tr>
+            <tr style="font-size: 11px;">
                 <td><strong>Grand Total:</strong></td>
-                <td style="text-align: right;" class="text-mono"><strong>Rs. {{ "%.0f"|format(booking.total_amount) }}</strong></td>
+                <td style="text-align: right; white-space: nowrap;" class="text-mono"><strong>Rs. {{ "%.0f"|format(booking.total_amount) }}</strong></td>
             </tr>
             {% else %}
             {% set cgst_e = (booking.gst_amount|float / 2)|round(2) if booking.gst_amount else 0 %}
             {% set sgst_e = booking.gst_amount|float - cgst_e if booking.gst_amount else 0 %}
-            <tr>
+            <tr style="font-size: 10px;">
                 <td><strong>Subtotal:</strong></td>
-                <td style="text-align: right;" class="text-mono"><strong>Rs. {{ "%.2f"|format(booking.subtotal) }}</strong></td>
+                <td style="text-align: right; white-space: nowrap;" class="text-mono"><strong>Rs. {{ "%.2f"|format(booking.subtotal) }}</strong></td>
             </tr>
             {% if booking.gst_amount and booking.gst_amount > 0 and booking.gst_mode != 'no_gst' %}
-            <tr><td colspan="2" style="padding: 8px 0 3px 0; font-size: 11px; color: var(--gray-500);"><strong>Tax Breakdown</strong></td></tr>
-            <tr style="font-size: 12px;">
+            <tr><td colspan="2" style="padding: 8px 0 3px 0; font-size: 10px; color: #6b7280;"><strong>Tax Breakdown</strong></td></tr>
+            <tr style="font-size: 10px;">
                 <td style="padding-left: 10px;">CGST @{{ "%.1f"|format(booking.gst_rate|float / 2) }}%</td>
-                <td style="text-align: right;" class="text-mono">{{ "%.2f"|format(cgst_e) }}</td>
+                <td style="text-align: right; white-space: nowrap;" class="text-mono">{{ "%.2f"|format(cgst_e) }}</td>
             </tr>
-            <tr style="font-size: 12px;">
+            <tr style="font-size: 10px;">
                 <td style="padding-left: 10px;">SGST @{{ "%.1f"|format(booking.gst_rate|float / 2) }}%</td>
-                <td style="text-align: right;" class="text-mono">{{ "%.2f"|format(sgst_e) }}</td>
+                <td style="text-align: right; white-space: nowrap;" class="text-mono">{{ "%.2f"|format(sgst_e) }}</td>
             </tr>
-            <tr style="border-top: 1px solid var(--gray-300); font-size: 12px;">
+            <tr style="border-top: 1px solid #d1d5db; font-size: 10px;">
                 <td style="padding-left: 10px;">Total GST</td>
-                <td style="text-align: right;" class="text-mono">{{ "%.2f"|format(booking.gst_amount) }}</td>
+                <td style="text-align: right; white-space: nowrap;" class="text-mono">{{ "%.2f"|format(booking.gst_amount) }}</td>
             </tr>
             {% endif %}
             {% if booking.round_off and booking.round_off|float != 0 %}
-            <tr>
+            <tr style="font-size: 10px;">
                 <td>Round Off</td>
-                <td style="text-align: right;" class="text-mono">{{ "%+.2f"|format(booking.round_off|float) }}</td>
+                <td style="text-align: right; white-space: nowrap;" class="text-mono">{{ "%+.2f"|format(booking.round_off|float) }}</td>
             </tr>
             {% endif %}
-                        <tr>
+            <tr style="font-size: 11px;">
                 <td><strong>Grand Total:</strong></td>
-                <td style="text-align: right;" class="text-mono"><strong>Rs. {{ "%.0f"|format(booking.total_amount) }}</strong></td>
+                <td style="text-align: right; white-space: nowrap;" class="text-mono"><strong>Rs. {{ "%.0f"|format(booking.total_amount) }}</strong></td>
             </tr>
             {% if booking.advance_amount and booking.advance_amount > 0 and booking.pending_amount > 0 %}
-            <tr>
+            <tr style="font-size: 10px;">
                 <td><strong>Advance Paid:</strong></td>
-                <td style="text-align: right; color: var(--success);" class="text-mono"><strong>- Rs. {{ "%.2f"|format(booking.advance_amount) }}</strong></td>
+                <td style="text-align: right; color: #38a169; white-space: nowrap;" class="text-mono"><strong>- Rs. {{ "%.2f"|format(booking.advance_amount) }}</strong></td>
             </tr>
             {% endif %}
             {% if booking.pending_amount and booking.pending_amount > 0 %}
-            <tr>
-                <td style="color: var(--danger);"><strong>Balance Due:</strong></td>
-                <td style="text-align: right; color: var(--danger);" class="text-mono"><strong>Rs. {{ "%.2f"|format(booking.pending_amount) }}</strong></td>
+            <tr style="font-size: 10px;">
+                <td style="color: #e53e3e;"><strong>Balance Due:</strong></td>
+                <td style="text-align: right; color: #e53e3e; white-space: nowrap;" class="text-mono"><strong>Rs. {{ "%.2f"|format(booking.pending_amount) }}</strong></td>
             </tr>
             {% elif booking.pending_amount and booking.pending_amount < 0 %}
-            <tr>
-                <td style="color: var(--success);"><strong>Excess Paid:</strong></td>
-                <td style="text-align: right; color: var(--success);" class="text-mono"><strong>Rs. {{ "%.2f"|format(booking.advance_amount - booking.total_amount) }}</strong></td>
+            <tr style="font-size: 10px;">
+                <td style="color: #38a169;"><strong>Excess Paid:</strong></td>
+                <td style="text-align: right; color: #38a169; white-space: nowrap;" class="text-mono"><strong>Rs. {{ "%.2f"|format(booking.advance_amount - booking.total_amount) }}</strong></td>
             </tr>
             {% else %}
-            <tr>
-                <td style="color: var(--success);"><strong>Paid:</strong></td>
-                <td style="text-align: right; color: var(--success);" class="text-mono"><strong>PAID</strong></td>
+            <tr style="font-size: 10px;">
+                <td style="color: #38a169;"><strong>Paid:</strong></td>
+                <td style="text-align: right; color: #38a169;" class="text-mono"><strong>PAID</strong></td>
             </tr>
             {% endif %}
             {% endif %}
@@ -420,24 +434,29 @@
     </div>
     
 <div class="invoice-footer">
-        <p><i class="fas fa-check-circle" style="color: var(--success);"></i> <strong>Thank you for staying with us!</strong></p>
-        <p style="font-size: 11px; margin-top: 10px;"><strong>Terms: Check-out time is 12:00 PM. Late checkout charges apply after that.</strong></p>
+        <p style="font-style: italic; color: #6b7280;">Thank you for staying with us!</p>
+        <p style="font-size: 9px; margin-top: 8px; color: #6b7280;"><strong>Terms:</strong> Check-out time is 12:00 PM. Late checkout charges apply after that.</p>
     </div>
     
-<div style="display: flex; justify-content: space-between; margin-top: 40px; padding-top: 20px;">
-        <div style="text-align: center;">
-            <p style="font-size: 12px; color: var(--gray-500); margin-bottom: 5px;"><strong>Guest Signature</strong></p>
-            <div style="height: 60px; width: 200px; border-bottom: 1px solid var(--gray-400);"></div>
-            <p style="margin: 5px 0 0; font-size: 11px;"><strong>{{ customer.name }}</strong></p>
-        </div>
-        <div style="text-align: center;">
-            <p style="font-size: 12px; color: var(--gray-500); margin-bottom: 5px;"><strong>For {{ hotel.name|upper }}</strong></p>
-            <div style="height: 60px; width: 200px; border-bottom: 1px solid var(--gray-400);"></div>
-            <p style="border-top: 1px solid var(--gray-400); padding-top: 5px; margin: 5px 0 0; font-size: 11px;">
-                <strong>Authorised Signatory</strong><br>
-                <span style="color: var(--gray-500);">{{ hotel.owner }}</span>
-            </p>
-        </div>
+<div style="margin-top: 40px; padding-top: 20px;">
+    <table style="width: 100%;">
+        <tr>
+            <td style="width: 33%; vertical-align: bottom; text-align: center;">
+                <p style="font-size: 10px; color: #1a202c; margin-bottom: 5px;"><strong>Guest Signature</strong></p>
+                <p style="font-size: 10px; letter-spacing: 2px;">_____________________________</p>
+                <p style="margin: 3px 0 0; font-size: 10px;"><strong>{{ customer.name }}</strong></p>
+            </td>
+            <td style="width: 34%;"></td>
+            <td style="width: 33%; vertical-align: bottom; text-align: center;">
+                <p style="font-size: 10px; color: #1a202c; margin-bottom: 5px;"><strong>For {{ hotel.name|upper }}</strong></p>
+                <p style="font-size: 10px; letter-spacing: 2px;">_____________________________</p>
+                <p style="margin: 3px 0 0; font-size: 10px;">
+                    <strong>Authorised Signatory</strong><br>
+                    <span style="color: #6b7280;">{{ hotel.owner }}</span>
+                </p>
+            </td>
+        </tr>
+    </table>
     </div>
     
     {% if not pdf_mode %}

@@ -532,24 +532,23 @@ function computeCheckoutPreview() {
     var roundedTotal = Math.round(total);
     var roundOff = roundedTotal - total;
     var roomChargeEl = document.getElementById('room-charge-amount');
-    if (roomChargeEl) roomChargeEl.textContent = formatCurrency(baseRoomCharge);
+    if (roomChargeEl) roomChargeEl.textContent = baseRoomCharge.toFixed(2);
     var extraPersonEl = document.getElementById('extra-person-amount');
-    if (extraPersonEl) extraPersonEl.textContent = formatCurrency(extraPersonCharge);
+    if (extraPersonEl) extraPersonEl.textContent = extraPersonCharge.toFixed(2);
     var extraChargesEl = document.getElementById('extra-charges-amount');
-    if (extraChargesEl) extraChargesEl.textContent = formatCurrency(extraChargesStatic);
-    var subtotalEl = document.getElementById('room-charge-amount');
+    if (extraChargesEl) extraChargesEl.textContent = extraChargesStatic.toFixed(2);
     var gstEl = document.getElementById('gst-amount');
-    if (gstEl) gstEl.textContent = formatCurrency(gstAmount);
+    if (gstEl) gstEl.textContent = gstAmount.toFixed(2);
     var roundOffRow = document.getElementById('round-off-row');
     var roundOffEl = document.getElementById('round-off-amount');
     if (roundOffEl) roundOffEl.textContent = (roundOff >= 0 ? '+' : '') + roundOff.toFixed(2);
     if (roundOffRow) roundOffRow.style.display = Math.abs(roundOff) < 0.005 ? 'none' : '';
     var grandEl = document.getElementById('grand-total-amount');
-    if (grandEl) grandEl.textContent = roundedTotal.toLocaleString();
+    if (grandEl) grandEl.textContent = roundedTotal.toFixed(0);
     var pendingEl = document.getElementById('pending-amount');
-    if (pendingEl) pendingEl.textContent = formatCurrency(Math.max(0, roundedTotal - advance));
+    if (pendingEl) pendingEl.textContent = Math.max(0, roundedTotal - advance).toFixed(2);
     var advanceEl = document.getElementById('advance-amount');
-    if (advanceEl) advanceEl.textContent = formatCurrency(advance);
+    if (advanceEl) advanceEl.textContent = advance.toFixed(2);
 }
 
 // Recompute preview when date/time inputs change
