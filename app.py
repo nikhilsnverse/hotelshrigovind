@@ -22,7 +22,6 @@ from wtforms import StringField, PasswordField, SubmitField, SelectField, FloatF
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError, Optional
 from werkzeug.utils import secure_filename
 import r2_storage
-from weasyprint import HTML
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -2128,17 +2127,7 @@ def download_invoice(invoice_id):
     room = db.session.get(Room, booking.room_id) if booking.room_id else None
     customer = db.session.get(Customer, booking.customer_id)
     
-    selected_rooms = []
-    if booking.booking_category == 'wedding' and booking.wedding_package == 'custom_ac' and booking.wedding_selected_rooms:
-        selected_ids = [int(x) for x in booking.wedding_selected_rooms.split(',') if x]
-        selected_rooms = Room.query.filter(Room.id.in_(selected_ids)).all()
-    
-    html = render_template('invoice_pdf_standalone.html',
-        invoice=invoice, booking=booking, room=room, customer=customer,
-        selected_rooms=selected_rooms)
-    
-    pdf_buffer = BytesIO()
-    HTML(string=html, base_url=request.url_root).write_pdf(pdf_buffer)
+    pdf_buffer = create_pdf_invoice(invoice, booking, customer, room)
     pdf_buffer.seek(0)
     
     return send_file(
