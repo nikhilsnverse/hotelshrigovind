@@ -143,7 +143,7 @@
 <div class="invoice-box">
     <div class="invoice-header" style="padding-bottom: 15px; border-bottom: 2px solid #1a365d; margin-bottom: 15px;">
         <div class="invoice-logo">
-            <img src="{{ url_for('static', filename='logo.png') }}" alt="Hotel Logo" onerror="this.style.display='none'" style="max-height: 180px;">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="Hotel Logo" onerror="this.style.display='none'" style="max-height: 70px;">
             <div>
                 <h2><strong>{{ hotel.name|upper }}</strong></h2>
                 {% if hotel.address %}<p><strong>{{ hotel.address }}</strong></p>{% endif %}
@@ -158,7 +158,7 @@
                     <p><strong>Date: {{ invoice.generated_at.strftime('%d %b %Y, %I:%M %p') }}</strong></p>
                 </div>
             </div>
-            <img src="{{ url_for('static', filename='real_scanner.jpeg') }}" alt="QR Code" style="max-height: 80px; max-width: 80px;" onerror="this.style.display='none'">
+            <img src="{{ url_for('static', filename='real_scanner.jpeg') }}" alt="QR Code" style="max-height: 50px; max-width: 50px;" onerror="this.style.display='none'">
         </div>
     </div>
     
