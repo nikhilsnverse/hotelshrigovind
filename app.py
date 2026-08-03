@@ -2183,6 +2183,7 @@ def export_payments():
             payment.booking.check_in.strftime('%I:%M %p') if payment.booking else '-',
             payment.booking.check_out.strftime('%d %b %Y') if payment.booking else '-',
             payment.booking.check_out.strftime('%I:%M %p') if payment.booking else '-',
+            f"Rs. {float(payment.booking.gst_amount or 0):,.2f}" if payment.booking else 'Rs. 0.00',
             f"{int(payment.amount)}"
         ])
 
@@ -2191,7 +2192,7 @@ def export_payments():
         writer = csv.writer(data)
 
         # Header
-        writer.writerow(['Name', 'Booking ID', 'Phone Number', 'ID Proof', 'Check-in Date', 'Check-in Time', 'Check-out Date', 'Check-out Time', 'Amount Paid'])
+        writer.writerow(['Name', 'Booking ID', 'Phone Number', 'ID Proof', 'Check-in Date', 'Check-in Time', 'Check-out Date', 'Check-out Time', 'GST Amount', 'Amount Paid'])
         yield data.getvalue()
         data.seek(0)
         data.truncate(0)
