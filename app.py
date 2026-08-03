@@ -624,7 +624,8 @@ def create_pdf_invoice(invoice, booking, customer, room):
             fontSize=fs, textColor=c,
             alignment=kw.get('a', TA_LEFT), fontName=fn,
             spaceAfter=kw.get('sa', 0), spaceBefore=kw.get('sb', 0),
-            leading=kw.get('l', max(fs * 1.4, 16))))
+            leading=kw.get('l', max(fs * 1.4, 16)),
+            leftPadding=kw.get('leftPad', 0)))
     
     def H(text, fs=11, c=colors.black, a=TA_LEFT):
         return P(f'<b>{text}</b>', fs=fs, c=c, a=a)
@@ -838,14 +839,16 @@ def create_pdf_invoice(invoice, booking, customer, room):
         items_data.append([P(str(idx)), P(f'<b>{desc_text}</b>'), P(str(qty_display), a=TA_CENTER), P(rate_label, a=TA_RIGHT), P('-', a=TA_RIGHT), P(f'Rs. {ch_total:,.2f}', a=TA_RIGHT), P(f'Rs. {ch_total:,.2f}', a=TA_RIGHT)])
         idx += 1
 
-    # Column widths scaled to match HTML invoice proportions and fit within page
-    # S.No: 28, Description: 200, Nights: 45, Amount: 70, Discount: 70, Taxable: 70, Total: 80
-    items_table = Table(items_data, colWidths=[28, 200, 45, 70, 70, 70, 80])
+    # Column widths to match HTML invoice proportions and fit within page
+    # S.No: 28, Description: 185, Nights: 45, Amount: 70, Discount: 65, Taxable: 65, Total: 75
+    items_table = Table(items_data, colWidths=[28, 185, 45, 70, 65, 65, 75])
     items_table.setStyle(TableStyle([
         ('LINEBELOW', (0, 0), (-1, 0), 2, colors.black),
         ('LINEBELOW', (0, 1), (-1, -1), 0.5, colors.black),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('ALIGN', (0, 0), (0, -1), 'CENTER'),
         ('ALIGN', (2, 0), (2, -1), 'CENTER'),
@@ -854,82 +857,63 @@ def create_pdf_invoice(invoice, booking, customer, room):
     elements.append(items_table)
     elements.append(Spacer(1, 15))
     
-    # --- Table 2: Totals (matching HTML invoice-totals) ---
-    totals_data = []
-    charges_data = []
+    # --- Totals section (matching HTML invoice-totals single-table layout) ---
+    summary_data = []
     
     if float(booking.gst_amount or 0) > 0 and booking.gst_mode == 'include':
         gst_rate = float(booking.gst_rate or 5)
         taxable = float(booking.total_amount) - float(booking.gst_amount)
         cgst = round(float(booking.gst_amount) / 2, 2)
         sgst = float(booking.gst_amount) - cgst
-        charges_data.append([P('<i>Included Tax Breakdown</i>', fs=8, c=GRAY), P('', fs=10), P('', fs=10), P('', fs=10)])
-        charges_data.append([P('Taxable Amount', fs=9), P('', fs=10), P('', fs=10), P(f'Rs. {taxable:,.2f}', fs=9, a=TA_RIGHT)])
-        charges_data.append([P(f'CGST @{gst_rate/2:.1f}%', fs=9), P('', fs=10), P('', fs=10), P(f'{cgst:,.2f}', fs=9, a=TA_RIGHT)])
-        charges_data.append([P(f'SGST @{gst_rate/2:.1f}%', fs=9), P('', fs=10), P('', fs=10), P(f'{sgst:,.2f}', fs=9, a=TA_RIGHT)])
-        charges_data.append([P('Total GST', fs=9, c=GRAY), P('', fs=10), P('', fs=10), P(f'{float(booking.gst_amount):,.2f}', fs=9, c=GRAY, a=TA_RIGHT)])
+        summary_data.append([P('<i>Included Tax Breakdown</i>', fs=9, c=GRAY), ''])
+        summary_data.append([P('Taxable Amount', fs=10, leftPad=10), P(f'Rs. {taxable:,.2f}', fs=10, a=TA_RIGHT)])
+        summary_data.append([P(f'CGST @{gst_rate/2:.1f}%', fs=10, leftPad=10), P(f'{cgst:,.2f}', fs=10, a=TA_RIGHT)])
+        summary_data.append([P(f'SGST @{gst_rate/2:.1f}%', fs=10, leftPad=10), P(f'{sgst:,.2f}', fs=10, a=TA_RIGHT)])
+        summary_data.append([P('Total GST', fs=10, c=GRAY, sb=6), P(f'{float(booking.gst_amount):,.2f}', fs=10, c=GRAY, a=TA_RIGHT)])
         if abs(float(booking.round_off or 0)) >= 0.005:
-            charges_data.append([P('Round Off', fs=9, c=GRAY), P('', fs=10), P('', fs=10), P(f'{float(booking.round_off):+,.2f}', fs=9, c=GRAY, a=TA_RIGHT)])
-        charges_data.append([P('<b>Grand Total:</b>', fs=11, c=PRIMARY, a=TA_RIGHT), P(f'<b>Rs. {float(booking.total_amount):,.0f}</b>', fs=11, c=PRIMARY, a=TA_RIGHT)])
+            summary_data.append([P('Round Off', fs=10, c=GRAY), P(f'{float(booking.round_off):+,.2f}', fs=10, c=GRAY, a=TA_RIGHT)])
+        summary_data.append([P('<b>Grand Total:</b>', fs=12, c=PRIMARY), P(f'<b>Rs. {float(booking.total_amount):,.0f}</b>', fs=12, c=PRIMARY, a=TA_RIGHT)])
     else:
         gst_amount = float(booking.gst_amount or 0)
         cgst_e = round(gst_amount / 2, 2) if gst_amount > 0 else 0
         sgst_e = gst_amount - cgst_e if gst_amount > 0 else 0
-        totals_data.append([P('<b>Subtotal:</b>', fs=10, a=TA_RIGHT), P(f'<b>Rs. {float(booking.subtotal):,.2f}</b>', fs=10, a=TA_RIGHT)])
+        summary_data.append([P('<b>Subtotal:</b>', fs=10), P(f'<b>Rs. {float(booking.subtotal):,.2f}</b>', fs=10, a=TA_RIGHT)])
         if gst_amount > 0:
-            charges_data.append([P('', fs=10), P('', fs=10), P('<i>Tax Breakdown</i>', fs=8, c=GRAY, a=TA_RIGHT), P('', fs=10)])
-            charges_data.append([P('', fs=10), P('', fs=10), P(f'CGST @{gst_percent:.1f}%', fs=9, a=TA_RIGHT), P(f'{cgst_e:,.2f}', fs=9, a=TA_RIGHT)])
-            charges_data.append([P('', fs=10), P('', fs=10), P(f'SGST @{gst_percent:.1f}%', fs=9, a=TA_RIGHT), P(f'{sgst_e:,.2f}', fs=9, a=TA_RIGHT)])
-            charges_data.append([P('', fs=10), P('', fs=10), P('Total GST', fs=9, c=GRAY, a=TA_RIGHT), P(f'{gst_amount:,.2f}', fs=9, c=GRAY, a=TA_RIGHT)])
+            summary_data.append([P('<i>Tax Breakdown</i>', fs=9, c=GRAY), ''])
+            summary_data.append([P(f'CGST @{gst_percent:.1f}%', fs=10, leftPad=10), P(f'{cgst_e:,.2f}', fs=10, a=TA_RIGHT)])
+            summary_data.append([P(f'SGST @{gst_percent:.1f}%', fs=10, leftPad=10), P(f'{sgst_e:,.2f}', fs=10, a=TA_RIGHT)])
+            summary_data.append([P('Total GST', fs=10, c=GRAY, sb=6), P(f'{gst_amount:,.2f}', fs=10, c=GRAY, a=TA_RIGHT)])
         if abs(float(booking.round_off or 0)) >= 0.005:
-            charges_data.append([P('', fs=10), P('', fs=10), P('Round Off', fs=9, c=GRAY, a=TA_RIGHT), P(f'{float(booking.round_off):+,.2f}', fs=9, c=GRAY, a=TA_RIGHT)])
-        charges_data.append([P('<b>Grand Total:</b>', fs=11, c=PRIMARY, a=TA_RIGHT), P(f'<b>Rs. {float(booking.total_amount):,.0f}</b>', fs=11, c=PRIMARY, a=TA_RIGHT)])
-    
-    if charges_data:
-        charges_table = Table(charges_data, colWidths=[180, 80, 110, 150])
-        charges_table.setStyle(TableStyle([
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-            ('LEFTPADDING', (0, 0), (-1, -1), 0),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-            ('ALIGN', (3, 0), (3, -1), 'RIGHT'),
-        ]))
-        elements.append(charges_table)
-        elements.append(Spacer(1, 15))
+            summary_data.append([P('Round Off', fs=10, c=GRAY), P(f'{float(booking.round_off):+,.2f}', fs=10, c=GRAY, a=TA_RIGHT)])
+        summary_data.append([P('<b>Grand Total:</b>', fs=12, c=PRIMARY), P(f'<b>Rs. {float(booking.total_amount):,.0f}</b>', fs=12, c=PRIMARY, a=TA_RIGHT)])
     
     pending = float(booking.pending_amount or 0)
     advance = float(booking.advance_amount or 0)
-    
     if advance > 0 and pending > 0:
-        totals_data.append([P('<b>Advance Paid:</b>', fs=10, c=SUCCESS, a=TA_RIGHT), P(f'<b>-Rs. {advance:,.2f}</b>', fs=10, c=SUCCESS, a=TA_RIGHT)])
-        totals_data.append([P('<b>Balance Due:</b>', fs=10, c=DANGER, a=TA_RIGHT), P(f'<b>Rs. {pending:,.2f}</b>', fs=10, c=DANGER, a=TA_RIGHT)])
+        summary_data.append([P('<b>Advance Paid:</b>', fs=10, c=SUCCESS), P(f'<b>-Rs. {advance:,.2f}</b>', fs=10, c=SUCCESS, a=TA_RIGHT)])
+        summary_data.append([P('<b>Balance Due:</b>', fs=10, c=DANGER), P(f'<b>Rs. {pending:,.2f}</b>', fs=10, c=DANGER, a=TA_RIGHT)])
     elif pending < 0:
-        totals_data.append([P('<b>Excess Paid:</b>', fs=10, c=SUCCESS, a=TA_RIGHT), P(f'<b>Rs. {advance - float(booking.total_amount):,.2f}</b>', fs=10, c=SUCCESS, a=TA_RIGHT)])
+        summary_data.append([P('<b>Excess Paid:</b>', fs=10, c=SUCCESS), P(f'<b>Rs. {advance - float(booking.total_amount):,.2f}</b>', fs=10, c=SUCCESS, a=TA_RIGHT)])
+    elif advance > 0:
+        summary_data.append([P('<b>Paid:</b>', fs=10, c=SUCCESS), P(f'<b>Rs. {advance:,.2f}</b>', fs=10, c=SUCCESS, a=TA_RIGHT)])
     else:
-        totals_data.append([P('<b>Paid:</b>', fs=10, c=SUCCESS, a=TA_RIGHT), P('<b>PAID</b>', fs=10, c=SUCCESS, a=TA_RIGHT)])
+        summary_data.append([P('<b>Paid:</b>', fs=10, c=SUCCESS), P('<b>PAID</b>', fs=10, c=SUCCESS)])
     
-    totals_table = Table(totals_data, colWidths=[300, 120])
-    totals_table.hAlign = 'RIGHT'
+    summary_table = Table(summary_data, colWidths=[320, 120])
+    summary_table.hAlign = 'RIGHT'
     ts = TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING', (0, 0), (-1, -1), 3),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
         ('LEFTPADDING', (0, 0), (-1, -1), 0),
         ('RIGHTPADDING', (0, 0), (-1, -1), 0),
     ])
-    for i, row in enumerate(totals_data):
-        txt = row[0].getText() if hasattr(row[0], 'getText') else str(row[0])
-        if 'Subtotal' in txt:
-            ts.add('LINEABOVE', (0, i), (-1, i), 0.5, colors.black)
-    totals_table.setStyle(ts)
-    elements.append(totals_table)
+    summary_table.setStyle(ts)
+    elements.append(summary_table)
     elements.append(Spacer(1, 25))
     
-    elements.append(Spacer(1, 10))
     elements.append(P('<i>Thank you for staying with us!</i>', fs=10, c=GRAY, a=TA_CENTER))
     elements.append(P('<b>Terms:</b> Check-out time is 12:00 PM. Late checkout charges apply after that.', fs=9, c=GRAY, a=TA_CENTER))
-    elements.append(Spacer(1, 20))
-    
     elements.append(Spacer(1, 20))
     
     sign_table = Table([
@@ -943,11 +927,7 @@ def create_pdf_invoice(invoice, booking, customer, room):
         ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
     ]))
     elements.append(sign_table)
-    elements.append(Spacer(1, 20))
     
-    elements.append(Table([['']], colWidths=[520], style=TableStyle([
-        ('LINEABOVE', (0, 0), (-1, 0), 1, ACCENT),
-    ])))
     doc.build(elements)
     buffer.seek(0)
     return buffer
