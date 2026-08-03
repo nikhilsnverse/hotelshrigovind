@@ -112,7 +112,7 @@
     </div>
 </div>
 
-<div class="modal-overlay" id="edit-modal" style="display: none;">
+<div class="modal-overlay" id="edit-modal">
     <div class="modal" style="max-width: 500px;">
         <div class="modal-header">
             <h3>Edit Pre-Booking</h3>
@@ -184,12 +184,12 @@ function editRecord(id) {
                 document.getElementById('edit_check_out').value = '';
             }
             document.getElementById('edit-form').action = '/wedding-bookings/' + id + '/edit';
-            document.getElementById('edit-modal').style.display = 'flex';
+            document.getElementById('edit-modal').classList.add('active');
         });
 }
 
 function closeEdit() {
-    document.getElementById('edit-modal').style.display = 'none';
+    document.getElementById('edit-modal').classList.remove('active');
 }
 </script>
 {% endblock %}
