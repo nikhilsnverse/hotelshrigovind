@@ -674,7 +674,7 @@ def create_pdf_invoice(invoice, booking, customer, room):
     
     right_title = []
     right_title.append(H('INVOICE', fs=20, c=DARK, a=TA_RIGHT))
-    right_title.append(P(f'<b>{invoice.invoice_number}</b><br/>Date: {invoice.generated_at.strftime("%d %b %Y, %I:%M %p")}', fs=11, c=DARK, a=TA_RIGHT))
+    right_title.append(P(f'<b>{invoice.invoice_number}</b><br/>Date: {invoice.generated_at.strftime("%d %b %Y")}', fs=11, c=DARK, a=TA_RIGHT))
     
     if qr_img:
         right_header = Table([[right_title, qr_img]], colWidths=[160, 60])
@@ -877,7 +877,8 @@ def create_pdf_invoice(invoice, booking, customer, room):
         gst_amount = float(booking.gst_amount or 0)
         cgst_e = round(gst_amount / 2, 2) if gst_amount > 0 else 0
         sgst_e = gst_amount - cgst_e if gst_amount > 0 else 0
-        summary_data.append([P('<b>Subtotal:</b>', fs=10), P(f'<b>Rs. {float(booking.subtotal):,.2f}</b>', fs=10, a=TA_RIGHT)])
+        if booking.gst_mode != 'no_gst':
+            summary_data.append([P('<b>Subtotal:</b>', fs=10), P(f'<b>Rs. {float(booking.subtotal):,.2f}</b>', fs=10, a=TA_RIGHT)])
         if gst_amount > 0:
             summary_data.append([P('<i>Tax Breakdown</i>', fs=9, c=GRAY), ''])
             summary_data.append([P(f'CGST @{gst_percent:.1f}%', fs=10, leftPad=10), P(f'{cgst_e:,.2f}', fs=10, a=TA_RIGHT)])

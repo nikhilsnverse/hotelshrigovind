@@ -375,10 +375,12 @@
         {% set taxable = booking.total_amount|float - booking.gst_amount|float %}
         {% set cgst = (booking.gst_amount|float / 2)|round(2) %}
         {% set sgst = booking.gst_amount|float - cgst %}
+        {% if booking.gst_mode != 'no_gst' %}
         <tr>
             <td><strong>Subtotal:</strong></td>
             <td class="amount text-mono"><strong>Rs. {{ "%.2f"|format(booking.total_amount + booking.discount|float) }}</strong></td>
         </tr>
+        {% endif %}
         {% if booking.discount and booking.discount > 0 %}
         <tr>
             <td style="color: #38a169;">Discount:</td>
@@ -405,10 +407,12 @@
         {% else %}
         {% set cgst_e = (booking.gst_amount|float / 2)|round(2) if booking.gst_amount else 0 %}
         {% set sgst_e = booking.gst_amount|float - cgst_e if booking.gst_amount else 0 %}
+        {% if booking.gst_mode != 'no_gst' %}
         <tr>
             <td><strong>Subtotal:</strong></td>
             <td class="amount text-mono"><strong>Rs. {{ "%.2f"|format(booking.subtotal + booking.discount|float) }}</strong></td>
         </tr>
+        {% endif %}
         {% if booking.discount and booking.discount > 0 %}
         <tr>
             <td style="color: #38a169;">Discount:</td>

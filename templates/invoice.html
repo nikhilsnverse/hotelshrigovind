@@ -155,7 +155,7 @@
                 <h1><strong>INVOICE</strong></h1>
                 <div class="invoice-meta">
                     <p><strong>{{ invoice.invoice_number }}</strong></p>
-                    <p><strong>Date: {{ invoice.generated_at.strftime('%d %b %Y, %I:%M %p') }}</strong></p>
+                    <p><strong>Date: {{ invoice.generated_at.strftime('%d %b %Y') }}</strong></p>
                 </div>
             </div>
             <img src="{{ url_for('static', filename='real_scanner.jpeg') }}" alt="QR Code" style="max-height: 50px; max-width: 50px;" onerror="this.style.display='none'">
@@ -378,10 +378,12 @@
             {% else %}
             {% set cgst_e = (booking.gst_amount|float / 2)|round(2) if booking.gst_amount else 0 %}
             {% set sgst_e = booking.gst_amount|float - cgst_e if booking.gst_amount else 0 %}
+            {% if booking.gst_mode != 'no_gst' %}
             <tr style="font-size: 10px;">
                 <td><strong>Subtotal:</strong></td>
                 <td style="text-align: right; white-space: nowrap;" class="text-mono"><strong>Rs. {{ "%.2f"|format(booking.subtotal) }}</strong></td>
             </tr>
+            {% endif %}
             {% if booking.gst_amount and booking.gst_amount > 0 and booking.gst_mode != 'no_gst' %}
             <tr><td colspan="2" style="padding: 8px 0 3px 0; font-size: 10px; color: #6b7280;"><strong>Tax Breakdown</strong></td></tr>
             <tr style="font-size: 10px;">
