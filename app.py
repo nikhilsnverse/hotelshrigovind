@@ -760,11 +760,11 @@ def create_pdf_invoice(invoice, booking, customer, room):
     
     gst_percent = float(booking.gst_rate or 5) / 2
     
-    # --- Table 1: Line items (S.No, Description, Nights, Amount, Discount, Taxable, Total) ---
+    # --- Table 1: Line items (S.No, Description, Nights, Amount, Discount, Total) ---
     gst = float(booking.gst_rate or 0)
     items_data = [
         [P('<b>S.No</b>', fs=9), P('<b>Description</b>', fs=9), P('<b>Nights</b>', fs=9, a=TA_CENTER),
-         P('<b>Amount</b>', fs=9, a=TA_RIGHT), P('<b>Discount</b>', fs=9, a=TA_RIGHT), P('<b>Taxable</b>', fs=9, a=TA_RIGHT), P('<b>Total</b>', fs=9, a=TA_RIGHT)]
+         P('<b>Amount</b>', fs=9, a=TA_RIGHT), P('<b>Discount</b>', fs=9, a=TA_RIGHT), P('<b>Total</b>', fs=9, a=TA_RIGHT)]
     ]
 
     idx = 1
@@ -796,17 +796,14 @@ def create_pdf_invoice(invoice, booking, customer, room):
     amount_after_discount = base_total - discount_amt
 
     if booking.gst_mode == 'include' and gst > 0:
-        taxable = (amount_after_discount * 100) / (100 + gst)
         total = amount_after_discount
     elif booking.gst_mode == 'exclude' and gst > 0:
-        taxable = amount_after_discount
         total = amount_after_discount + (amount_after_discount * gst / 100)
     else:
-        taxable = amount_after_discount
         total = amount_after_discount
 
     discount_str = f'- Rs. {discount_amt:,.2f}' if discount_amt > 0 else '-'
-    items_data.append([P(str(idx)), P(f'<b>{desc}</b>'), P(str(booking.stay_duration), a=TA_CENTER), P(f'Rs. {amount:,.2f}', a=TA_RIGHT), P(discount_str, a=TA_RIGHT), P(f'Rs. {taxable:,.2f}', a=TA_RIGHT), P(f'Rs. {total:,.2f}', a=TA_RIGHT)])
+    items_data.append([P(str(idx)), P(f'<b>{desc}</b>'), P(str(booking.stay_duration), a=TA_CENTER), P(f'Rs. {amount:,.2f}', a=TA_RIGHT), P(discount_str, a=TA_RIGHT), P(f'Rs. {total:,.2f}', a=TA_RIGHT)])
     idx += 1
 
     # Extra person charges
@@ -836,12 +833,12 @@ def create_pdf_invoice(invoice, booking, customer, room):
             desc_text = charge.description or charge.charge_type.replace('_', ' ').title()
             qty_display = charge.quantity or 1
             rate_label = f'Rs. {ch_total / (charge.quantity or 1):.2f}'
-        items_data.append([P(str(idx)), P(f'<b>{desc_text}</b>'), P(str(qty_display), a=TA_CENTER), P(rate_label, a=TA_RIGHT), P('-', a=TA_RIGHT), P(f'Rs. {ch_total:,.2f}', a=TA_RIGHT), P(f'Rs. {ch_total:,.2f}', a=TA_RIGHT)])
+        items_data.append([P(str(idx)), P(f'<b>{desc_text}</b>'), P(str(qty_display), a=TA_CENTER), P(rate_label, a=TA_RIGHT), P('-', a=TA_RIGHT), P(f'Rs. {ch_total:,.2f}', a=TA_RIGHT)])
         idx += 1
 
     # Column widths to match HTML invoice proportions and fit within page
-    # S.No: 28, Description: 185, Nights: 45, Amount: 70, Discount: 65, Taxable: 65, Total: 75
-    items_table = Table(items_data, colWidths=[28, 185, 45, 70, 65, 65, 75])
+    # S.No: 28, Description: 185, Nights: 45, Amount: 70, Discount: 65, Total: 75
+    items_table = Table(items_data, colWidths=[28, 185, 45, 70, 65, 75])
     items_table.setStyle(TableStyle([
         ('LINEBELOW', (0, 0), (-1, 0), 2, colors.black),
         ('LINEBELOW', (0, 1), (-1, -1), 0.5, colors.black),
@@ -862,11 +859,9 @@ def create_pdf_invoice(invoice, booking, customer, room):
     
     if float(booking.gst_amount or 0) > 0 and booking.gst_mode == 'include':
         gst_rate = float(booking.gst_rate or 5)
-        taxable = float(booking.total_amount) - float(booking.gst_amount)
         cgst = round(float(booking.gst_amount) / 2, 2)
         sgst = float(booking.gst_amount) - cgst
         summary_data.append([P('<i>Included Tax Breakdown</i>', fs=9, c=GRAY), ''])
-        summary_data.append([P('Taxable Amount', fs=10, leftPad=10), P(f'Rs. {taxable:,.2f}', fs=10, a=TA_RIGHT)])
         summary_data.append([P(f'CGST @{gst_rate/2:.1f}%', fs=10, leftPad=10), P(f'{cgst:,.2f}', fs=10, a=TA_RIGHT)])
         summary_data.append([P(f'SGST @{gst_rate/2:.1f}%', fs=10, leftPad=10), P(f'{sgst:,.2f}', fs=10, a=TA_RIGHT)])
         summary_data.append([P('Total GST', fs=10, c=GRAY, sb=6), P(f'{float(booking.gst_amount):,.2f}', fs=10, c=GRAY, a=TA_RIGHT)])

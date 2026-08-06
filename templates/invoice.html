@@ -224,7 +224,6 @@
                 <th style="text-align:center; width:80px;"><strong>Nights/Qty</strong></th>
                 <th style="text-align:right; width:100px;"><strong>Amount</strong></th>
                 <th style="text-align:right; width:90px;"><strong>Discount</strong></th>
-                <th style="text-align:right; width:100px;"><strong>Taxable</strong></th>
                 <th style="text-align:right; width:110px;"><strong>Total</strong></th>
             </tr>
         </thead>
@@ -261,7 +260,6 @@
                     <td style="text-align:center">{{ booking.stay_duration }}</td>
                     <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(amount) }}</td>
                     <td style="text-align:right" class="text-mono nowrap">{% if discount_amt > 0 %}- Rs. {{ "%.2f"|format(discount_amt) }}{% else %}-{% endif %}</td>
-                    <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(taxable) }}</td>
                     <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(row_total) }}</td>
                 </tr>
             {% else %}
@@ -286,7 +284,6 @@
                     <td style="text-align:center">{{ booking.stay_duration }}</td>
                     <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(amount) }}</td>
                     <td style="text-align:right" class="text-mono nowrap">{% if discount_amt > 0 %}- Rs. {{ "%.2f"|format(discount_amt) }}{% else %}-{% endif %}</td>
-                    <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(taxable) }}</td>
                     <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(row_total) }}</td>
                 </tr>
             {% endif %}
@@ -307,7 +304,6 @@
                     <td style="text-align:center">{{ booking.stay_duration }}</td>
                     <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(ep_amount) }}</td>
                     <td style="text-align:right">-</td>
-                    <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(ep_total) }}</td>
                     <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(ep_total) }}</td>
                 </tr>
             {% endif %}
@@ -333,7 +329,6 @@
                     <td style="text-align:center">{{ qty_display }}</td>
                     <td style="text-align:right" class="text-mono nowrap">{{ rate_label }}</td>
                     <td style="text-align:right">-</td>
-                    <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(ch_total) }}</td>
                     <td style="text-align:right" class="text-mono nowrap">Rs. {{ "%.2f"|format(ch_total) }}</td>
                 </tr>
             {% endfor %}
@@ -440,18 +435,18 @@
         <p style="font-size: 9px; margin-top: 8px; color: #6b7280;"><strong>Terms:</strong> Check-out time is 12:00 PM. Late checkout charges apply after that.</p>
     </div>
     
-<div style="margin-top: 40px; padding-top: 20px;">
+<div style="margin-top: 60px; padding-top: 20px;">
     <table style="width: 100%;">
         <tr>
             <td style="width: 33%; vertical-align: bottom; text-align: center;">
-                <p style="font-size: 10px; color: #1a202c; margin-bottom: 5px;"><strong>Guest Signature</strong></p>
-                <p style="font-size: 10px; letter-spacing: 2px;">_____________________________</p>
+                <p style="font-size: 10px; color: #1a202c; margin-bottom: 25px;"><strong>Guest Signature</strong></p>
+                <p style="font-size: 10px; letter-spacing: 2px; margin-top: 30px;">_____________________________</p>
                 <p style="margin: 3px 0 0; font-size: 10px;"><strong>{{ customer.name }}</strong></p>
             </td>
             <td style="width: 34%;"></td>
             <td style="width: 33%; vertical-align: bottom; text-align: center;">
-                <p style="font-size: 10px; color: #1a202c; margin-bottom: 5px;"><strong>For {{ hotel.name|upper }}</strong></p>
-                <p style="font-size: 10px; letter-spacing: 2px;">_____________________________</p>
+                <p style="font-size: 10px; color: #1a202c; margin-bottom: 25px;"><strong>For {{ hotel.name|upper }}</strong></p>
+                <p style="font-size: 10px; letter-spacing: 2px; margin-top: 30px;">_____________________________</p>
                 <p style="margin: 3px 0 0; font-size: 10px;">
                     <strong>Authorised Signatory</strong><br>
                     <span style="color: #6b7280;">{{ hotel.owner }}</span>
