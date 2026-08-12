@@ -837,8 +837,8 @@ def create_pdf_invoice(invoice, booking, customer, room):
         idx += 1
 
     # Column widths to match HTML invoice proportions and fit within page
-    # S.No: 28, Description: 185, Nights: 45, Amount: 70, Discount: 65, Total: 75
-    items_table = Table(items_data, colWidths=[28, 185, 45, 70, 65, 75])
+    # S.No: 28, Description: 185, Nights: 18, Amount: 80, Discount: 75, Total: 82
+    items_table = Table(items_data, colWidths=[28, 185, 18, 80, 75, 82])
     items_table.setStyle(TableStyle([
         ('LINEBELOW', (0, 0), (-1, 0), 2, colors.black),
         ('LINEBELOW', (0, 1), (-1, -1), 0.5, colors.black),
