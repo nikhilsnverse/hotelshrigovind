@@ -75,6 +75,24 @@
                         <input type="text" name="hotel_gst" class="form-control" value="{{ hotel_settings.hotel_gst }}">
                     </div>
                     
+                    <div class="form-group" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--gray-50); border-radius: 8px;">
+                        <input type="checkbox" name="show_gst" id="show_gst" {% if hotel_settings.show_gst == '1' %}checked{% endif %} autocomplete="off" style="width: 18px; height: 18px; cursor: pointer;">
+                        <label for="show_gst" class="form-label" style="margin: 0; cursor: pointer; position: relative;">
+                            Show GST on Invoices
+                            <small style="display: block; color: var(--gray-500); font-weight: normal;">Uncheck to hide GST from invoices</small>
+                        </label>
+                        <script>
+                        (function(){
+                            function syncGstTick(){
+                                var cb = document.getElementById('show_gst');
+                                if (cb) cb.checked = {{ 'true' if hotel_settings.show_gst == '1' else 'false' }};
+                            }
+                            document.addEventListener('DOMContentLoaded', syncGstTick);
+                            window.addEventListener('pageshow', syncGstTick);
+                        })();
+                        </script>
+                    </div>
+                    
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-save"></i> Save Hotel Info
                     </button>

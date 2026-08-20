@@ -49,6 +49,7 @@ def inject_globals():
             'gst': Settings.get('hotel_gst', ''),
             'owner': Settings.get('hotel_owner', ''),
             'gst_rate': Settings.get('gst_rate', '5'),
+            'show_gst': Settings.get('show_gst', '1'),
             'price_classic': Settings.get('price_classic', '1500'),
             'price_deluxe': Settings.get('price_deluxe', '2500'),
             'price_suite': Settings.get('price_suite', '4000'),
@@ -132,6 +133,7 @@ def init_settings():
         'price_suite': '4000',
         'extra_person_charge': '300',
         'late_checkout_charge': '200',
+        'show_gst': '1',
     }
     for key, value in defaults.items():
         if not Settings.get(key):
@@ -606,6 +608,7 @@ def create_pdf_invoice(invoice, booking, customer, room):
     hotel_phone = Settings.get('hotel_phone', '')
     hotel_gst = Settings.get('hotel_gst', '')
     hotel_owner = Settings.get('hotel_owner', 'Akshay Shukla')
+    show_gst = Settings.get('show_gst', '1') == '1'
     
     PRIMARY = colors.HexColor('#1a365d')
     ACCENT = colors.HexColor('#c9a227')
@@ -644,7 +647,7 @@ def create_pdf_invoice(invoice, booking, customer, room):
     
     contact_parts = []
     if hotel_phone: contact_parts.append(f'Phone: {hotel_phone}')
-    if hotel_gst: contact_parts.append(f'GST: {hotel_gst}')
+    if show_gst and hotel_gst: contact_parts.append(f'GST: {hotel_gst}')
     
     left_text = []
     left_text.append(H(hotel_name.upper(), fs=18, c=PRIMARY))
@@ -2624,6 +2627,7 @@ def settings():
             Settings.set('hotel_email', request.form.get('hotel_email', ''))
             Settings.set('hotel_gst', request.form.get('hotel_gst', ''))
             Settings.set('hotel_owner', request.form.get('hotel_owner', ''))
+            Settings.set('show_gst', '1' if request.form.get('show_gst') == 'on' else '0')
             flash('Hotel information updated', 'success')
         
         elif 'update_prices' in request.form:
@@ -2646,6 +2650,7 @@ def settings():
         'hotel_gst': Settings.get('hotel_gst', '22AATFH3393Q1ZL'),
         'hotel_owner': Settings.get('hotel_owner', 'Akshay Shukla'),
         'gst_rate': Settings.get('gst_rate', '5'),
+        'show_gst': Settings.get('show_gst', '1'),
         'price_classic': Settings.get('price_classic', '1500'),
         'price_deluxe': Settings.get('price_deluxe', '2500'),
         'price_suite': Settings.get('price_suite', '4000'),

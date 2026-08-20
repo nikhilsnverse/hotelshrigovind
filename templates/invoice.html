@@ -140,6 +140,7 @@
 {% endblock %}
 
 {% block content %}
+{% set show_gst = hotel.show_gst == '1' %}
 <div class="invoice-box">
     <div class="invoice-header" style="padding-bottom: 15px; border-bottom: 2px solid #1a365d; margin-bottom: 15px;">
         <div class="invoice-logo">
@@ -147,7 +148,7 @@
             <div>
                 <h2><strong>{{ hotel.name|upper }}</strong></h2>
                 {% if hotel.address %}<p><strong>{{ hotel.address }}</strong></p>{% endif %}
-                {% if hotel.phone %}<p><strong>Phone: {{ hotel.phone }}</strong>{% endif %}{% if hotel.gst %} | <strong>GST: {{ hotel.gst }}</strong>{% endif %}</p>
+                {% if hotel.phone %}<p><strong>Phone: {{ hotel.phone }}</strong>{% endif %}{% if show_gst and hotel.gst %} | <strong>GST: {{ hotel.gst }}</strong>{% endif %}</p>
             </div>
         </div>
         <div class="invoice-title" style="display: flex; align-items: flex-start; gap: 20px;">
