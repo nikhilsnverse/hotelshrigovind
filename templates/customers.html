@@ -6,7 +6,7 @@
 {% block content %}
 <div class="card">
     <div class="card-header">
-        <h3 class="card-title">All Customers ({{ customers|length }})</h3>
+        <h3 class="card-title">All Customers ({{ total_customers }})</h3>
         <a href="{{ url_for('new_customer') }}" class="btn btn-primary">
             <i class="fas fa-plus"></i> Add Customer
         </a>
@@ -93,6 +93,30 @@
                 </tbody>
             </table>
         </div>
+        {% if pagination.pages > 1 %}
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; flex-wrap: wrap; gap: 10px;">
+            <small style="color: var(--gray-500);">
+                Showing {{ ((pagination.page - 1) * pagination.per_page) + 1 }}&ndash;{{ [pagination.page * pagination.per_page, pagination.total]|min }} of {{ pagination.total }}
+            </small>
+            <div style="display: flex; gap: 5px; align-items: center;">
+                {% set start = [[pagination.page - 2, pagination.pages - 4]|min, 1]|max %}
+                {% set end = [pagination.pages, start + 4]|min %}
+                {% if pagination.has_prev %}
+                <a href="{{ url_for('customers', page=pagination.page - 1, **({'search': search} if search else {})) }}" class="btn btn-sm btn-outline"><i class="fas fa-chevron-left"></i> Prev</a>
+                {% endif %}
+                {% for p in range(start, end + 1) %}
+                    {% if p == pagination.page %}
+                    <button class="btn btn-sm btn-primary" disabled>{{ p }}</button>
+                    {% else %}
+                    <a href="{{ url_for('customers', page=p, **({'search': search} if search else {})) }}" class="btn btn-sm btn-outline">{{ p }}</a>
+                    {% endif %}
+                {% endfor %}
+                {% if pagination.has_next %}
+                <a href="{{ url_for('customers', page=pagination.page + 1, **({'search': search} if search else {})) }}" class="btn btn-sm btn-outline">Next <i class="fas fa-chevron-right"></i></a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
         {% else %}
         <div class="empty-state">
             <i class="fas fa-users"></i>

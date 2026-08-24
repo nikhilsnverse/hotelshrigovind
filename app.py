@@ -1175,17 +1175,22 @@ def api_delete_room(room_id):
 @login_required
 def customers():
     search = request.args.get('search', '')
+    page = request.args.get('page', 1, type=int)
+    query = Customer.query.order_by(Customer.created_at.desc())
     if search:
-        customers_list = Customer.query.filter(
+        query = query.filter(
             db.or_(
                 Customer.name.ilike(f'%{search}%'),
                 Customer.phone.ilike(f'%{search}%'),
                 Customer.email.ilike(f'%{search}%')
             )
-        ).order_by(Customer.created_at.desc()).all()
-    else:
-        customers_list = Customer.query.order_by(Customer.created_at.desc()).limit(50).all()
-    return render_template('customers.html', customers=customers_list, search=search)
+        )
+    pagination = db.paginate(query, page=page, per_page=50, error_out=False)
+    if page > 1 and page > pagination.pages and pagination.pages > 0:
+        return redirect(url_for('customers', page=pagination.pages, **({'search': search} if search else {})))
+    return render_template('customers.html', customers=pagination.items,
+                           pagination=pagination,
+                           total_customers=pagination.total, search=search)
 
 @app.route('/customers/<int:customer_id>')
 @login_required
