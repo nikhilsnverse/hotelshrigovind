@@ -4,7 +4,7 @@
 {% block page_title %}Process Check-out{% endblock %}
 
 {% block content %}
-<div class="row" style="display: grid; grid-template-columns: 2fr 1fr; gap: 25px;">
+<div class="row grid-2fr-1fr">
     <div>
         <div class="card">
             <div class="card-header">
@@ -16,7 +16,7 @@
                 </div>
             </div>
             <div class="card-body">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+                <div class="grid-2col-equal" style="margin-bottom: 30px;">
                     <div>
                         <h4 style="color: var(--gray-500); font-size: 12px; text-transform: uppercase; margin-bottom: 10px;">Customer</h4>
                         <p style="margin: 0;"><strong>{{ customer.name }}</strong></p>
@@ -52,7 +52,7 @@
                 </div>
                 {% endif %}
                 
-                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; background: var(--gray-50); padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                <div class="checkout-stats-grid">
                     <div style="text-align: center;">
                         <p style="color: var(--gray-500); font-size: 12px; margin: 0;">Check-in</p>
                         <p style="font-weight: 600; margin: 5px 0 0;">{{ booking.actual_check_in.strftime('%d %b %Y %I:%M %p') if booking.actual_check_in else booking.check_in.strftime('%d %b %Y %I:%M %p') }}</p>
@@ -295,7 +295,7 @@
                     
                     <div class="form-group">
                         <label class="form-label">Checkout Date & Time</label>
-                        <div style="display: flex; gap: 10px;">
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                             <input type="date" name="checkout_date" id="checkout_date_input" class="form-control">
                             <input type="number" name="checkout_hour" id="checkout_hour" class="form-control" min="1" max="12" value="12" placeholder="HH" style="flex: 1; min-width: 70px;">
                             <span style="font-weight: bold; font-size: 18px;">:</span>
@@ -313,7 +313,7 @@
                     
                     <div class="form-group">
                         <label class="form-label">Discount (if any)</label>
-                        <div style="display: flex; gap: 10px;">
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                             <input type="number" name="discount" id="discount_input" class="form-control" value="{{ booking.discount or 0 }}" min="0" step="1" style="flex: 1;">
                             <button type="button" class="btn btn-warning btn-sm" onclick="updateDiscount(this)" style="white-space: nowrap;">
                                 <i class="fas fa-calculator"></i> Apply Discount

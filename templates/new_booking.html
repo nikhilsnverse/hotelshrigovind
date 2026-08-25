@@ -55,7 +55,7 @@
             
             <div class="form-group" style="margin-bottom: 25px;">
                 <label class="form-label">Booking Category *</label>
-                <div style="display: flex; gap: 20px; margin-top: 5px;">
+                <div class="booking-category-toggle">
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 20px; border: 2px solid var(--primary); border-radius: 8px; background: var(--gray-50);" id="cat_normal_label">
                         <input type="radio" name="booking_category" value="normal" checked onchange="toggleBookingCategory()">
                         <span style="font-weight: 600;">Normal Booking</span>
@@ -67,7 +67,7 @@
                 </div>
             </div>
             
-            <div class="row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+            <div class="row grid-2col-equal">
                 <div>
                     <h4 style="color: var(--primary); margin-bottom: 20px;">Customer Details</h4>
                     
@@ -99,11 +99,7 @@
 
                     <div class="form-group">
                         <label class="form-label">GST Mode *</label>
-                        <div style="display: flex; gap: 15px; margin-top: 5px;">
-                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
-                                <input type="radio" name="gst_mode" value="exclude" checked>
-                                <span>Exclude GST <small style="color: var(--gray-500);">(GST will be added)</small></span>
-                            </label>
+                        <div style="display: flex; gap: 15px; margin-top: 5px; flex-wrap: wrap;">
                             <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
                                 <input type="radio" name="gst_mode" value="include">
                                 <span>Include GST <small style="color: var(--gray-500);">(GST included in price)</small></span>
@@ -195,7 +191,7 @@
                             <div class="form-group">
                                 <label class="form-label">Select Rooms *</label>
                                 <small style="color: var(--gray-500); display: block; margin-bottom: 8px;">Tick the rooms you want to allocate. Rate = sum of selected rooms' prices per night.</small>
-                                <div id="ac-rooms-list" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+                                <div id="ac-rooms-list" class="ac-room-grid">
                                     {% for r in ac_rooms %}
                                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 12px; border: 2px solid var(--gray-200); border-radius: 8px; background: var(--gray-50);" class="ac-room-label" data-id="{{ r.id }}" data-price="{{ r.price_per_night }}">
                                         <input type="checkbox" name="wedding_selected_rooms" value="{{ r.id }}" class="ac-room-checkbox" data-price="{{ r.price_per_night }}" onchange="calculateBillSummary()">
@@ -225,7 +221,7 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">Check-in Time *</label>
-                            <div style="display: flex; gap: 5px; align-items: center;">
+                            <div style="display: flex; gap: 5px; align-items: center; flex-wrap: wrap;">
                                 <input type="number" name="check_in_hour" id="check_in_hour" class="form-control" min="1" max="12" value="12" placeholder="HH" style="flex: 1; min-width: 70px;" required>
                                 <span style="font-weight: bold; font-size: 18px;">:</span>
                                 <input type="number" name="check_in_minute" id="check_in_minute" class="form-control" min="0" max="59" value="0" placeholder="MM" style="flex: 1; min-width: 70px;" required>

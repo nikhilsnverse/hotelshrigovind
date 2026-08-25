@@ -4,7 +4,7 @@
 {% block page_title %}{{ booking.booking_id }}{% endblock %}
 
 {% block content %}
-<div class="row" style="display: grid; grid-template-columns: 2fr 1fr; gap: 25px;">
+<div class="row grid-2fr-1fr">
     <div>
         <div class="card">
             <div class="card-header">
@@ -21,7 +21,7 @@
                 </div>
             </div>
             <div class="card-body">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                <div class="grid-2col-equal">
                     <div>
                         <h4 style="color: var(--gray-500); font-size: 12px; text-transform: uppercase; margin-bottom: 10px;">Booking Information</h4>
                         <p><strong>Booking ID:</strong> <span class="text-mono">{{ booking.booking_id }}</span></p>

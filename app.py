@@ -712,8 +712,6 @@ def create_pdf_invoice(invoice, booking, customer, room):
         bill_lines.append(P(f'GST: {booking.company_gst}', fs=10, c=DARK))
     if booking.company_address:
         bill_lines.append(P(f'{booking.company_address}', fs=10, c=DARK))
-    elif customer.address:
-        bill_lines.append(P(f'{customer.address}', fs=10, c=DARK))
     
     guest_lines = [H('GUEST DETAILS', fs=9, c=DARK), P(f'<b>{customer.name}</b>', fs=11), P(f'{customer.phone}', fs=10, c=DARK)]
     if customer.address:

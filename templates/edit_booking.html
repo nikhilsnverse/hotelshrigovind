@@ -16,7 +16,7 @@
             <p style="margin: 0;"><i class="fas fa-info-circle"></i> <strong>Note:</strong> Changing dates or persons will automatically recalculate the bill.</p>
         </div>
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+        <div class="grid-2col-equal" style="margin-bottom: 30px;">
             <div>
                 <h4 style="color: var(--gray-500); font-size: 12px; text-transform: uppercase; margin-bottom: 10px;">Customer</h4>
                 <p style="margin: 0;"><strong>{{ customer.name }}</strong></p>
@@ -41,7 +41,7 @@
         </div>
         
         <form method="POST">
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+            <div class="form-row" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
                 <div class="form-group">
                     <label class="form-label">Check-in Date *</label>
                     <input type="date" name="check_in_date" class="form-control" value="{{ booking.check_in.strftime('%Y-%m-%d') }}" required>
@@ -62,7 +62,7 @@
                 </div>
             </div>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 20px;">
+            <div class="form-row" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-top: 20px;">
                 <div class="form-group">
                     <label class="form-label">Billing Rule *</label>
                     <select name="billing_mode" class="form-control form-select">
