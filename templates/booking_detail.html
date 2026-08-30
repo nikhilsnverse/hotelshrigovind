@@ -277,6 +277,16 @@
                         <i class="fas fa-sign-out-alt"></i> Process Check-out
                     </a>
                 </div>
+                {% elif booking.status == 'checked_out' %}
+                <div style="margin-top: 20px;">
+                    {% if booking.pending_amount and booking.pending_amount|float > 0 %}
+                    <a href="{{ url_for('checkout', booking_id=booking.id) }}" class="btn btn-success">
+                        <i class="fas fa-plus-circle"></i> Record Payment (Rs. {{ "%.0f"|format(booking.pending_amount) }} pending)
+                    </a>
+                    {% else %}
+                    <span class="badge badge-success" style="font-size: 14px; padding: 8px 14px;"><i class="fas fa-check-circle"></i> Bill Paid in Full</span>
+                    {% endif %}
+                </div>
                 {% endif %}
             </div>
         </div>

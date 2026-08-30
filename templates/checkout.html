@@ -4,6 +4,12 @@
 {% block page_title %}Process Check-out{% endblock %}
 
 {% block content %}
+{% if booking.status == 'checked_out' %}
+<div style="background: var(--warning-light, #fff8e1); border: 1px solid var(--warning, #f59e0b); color: var(--warning, #b45309); padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+    <i class="fas fa-exclamation-triangle"></i>
+    <span><strong>This booking has already been checked out.</strong> You can still record the remaining payment (Add Payment) or add extra charges here.</span>
+</div>
+{% endif %}
 <div class="row grid-2fr-1fr">
     <div>
         <div class="card">
@@ -141,7 +147,7 @@
                     <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: end;">
                         <div style="flex: 1; min-width: 150px;">
                             <label class="form-label">Amount</label>
-                            {{ payment_form.amount(class="form-control", placeholder="0.00") }}
+                            {{ payment_form.amount(class="form-control", placeholder="0.00", value=("%.2f"|format(booking.pending_amount) if booking.status == 'checked_out' and booking.pending_amount and booking.pending_amount > 0 else '')) }}
                         </div>
                         <div style="flex: 1; min-width: 150px;">
                             <label class="form-label">Payment Method</label>
@@ -322,12 +328,18 @@
                     </div>
                 </form>
                 
+                {% if booking.status == 'checked_in' %}
                 <form method="POST" style="margin-top: 15px;">
                     <input type="hidden" name="process_checkout" value="1">
                     <button type="submit" class="btn btn-success btn-lg" style="width: 100%;">
                         <i class="fas fa-check-circle"></i> Complete Check-out
                     </button>
                 </form>
+                {% else %}
+                <div style="margin-top: 15px; text-align: center; padding: 12px; background: var(--success-light, #f0fdf4); border: 1px dashed var(--success, #22c55e); border-radius: 8px; color: var(--success, #15803d);">
+                    <i class="fas fa-check-circle"></i> This booking is already checked out. Invoice is complete.
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>

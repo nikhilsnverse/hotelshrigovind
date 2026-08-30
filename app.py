@@ -1601,7 +1601,7 @@ def booking_detail(booking_id):
 def checkout(booking_id):
     booking = db.get_or_404(Booking, booking_id)
     
-    if booking.status != 'checked_in':
+    if booking.status not in ('checked_in', 'checked_out'):
         flash('This booking is not active', 'warning')
         return redirect(url_for('bookings'))
     
@@ -1804,7 +1804,7 @@ def checkout(booking_id):
         flash('Payment recorded', 'success')
         return redirect(url_for('checkout', booking_id=booking_id))
     
-    if request.method == 'POST' and 'process_checkout' in request.form:
+    if request.method == 'POST' and 'process_checkout' in request.form and booking.status == 'checked_in':
         now = datetime.now()
         
         manual_date = request.form.get('checkout_date', '')
